@@ -1,0 +1,59 @@
+// Define o nome do cache. Mude este valor se você fizer grandes alterações nos arquivos.
+const CACHE_NAME = 'agendei7-v1';
+
+// Lista de arquivos essenciais para o funcionamento offline do app.
+const urlsToCache = [
+  './', // O alias para index.html
+  './index.html',
+  './manifest.json',
+  './icon-192x192.png',
+  './icon-512x512.png'
+];
+
+// Evento 'install': é disparado quando o service worker é instalado.
+self.addEventListener('install', (event) => {
+  // Espera a instalação terminar antes de prosseguir.
+  event.waitUntil(
+    // Abre o cache com o nome definido.
+    caches.open(CACHE_NAME)
+      .then((cache) => {
+        console.log('Cache aberto');
+        // Adiciona todos os arquivos da lista 'urlsToCache' ao cache.
+        return cache.addAll(urlsToCache);
+      })
+  );
+});
+
+// Evento 'fetch': é disparado para cada requisição de rede feita pela página.
+self.addEventListener('fetch', (event) => {
+  event.respondWith(
+    // Tenta encontrar uma resposta para a requisição no cache.
+    caches.match(event.request)
+      .then((response) => {
+        // Se encontrar uma resposta no cache, a retorna.
+        if (response) {
+          return response;
+        }
+        // Se não encontrar, faz a requisição à rede.
+        return fetch(event.request);
+      })
+  );
+});
+
+// Evento 'activate': é disparado quando o service worker é ativado.
+// Usado para limpar caches antigos.
+self.addEventListener('activate', (event) => {
+  const cacheWhitelist = [CACHE_NAME];
+  event.waitUntil(
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames.map((cacheName) => {
+          // Se o nome do cache não estiver na lista de permissões, ele é deletado.
+          if (cacheWhitelist.indexOf(cacheName) === -1) {
+            return caches.delete(cacheName);
+          }
+        })
+      );
+    })
+  );
+});
