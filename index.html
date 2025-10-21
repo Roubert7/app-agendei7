@@ -87,15 +87,11 @@
                     const response = await fetch(APPS_SCRIPT_URL, {
                         method: 'POST',
                         redirect: "follow",
-                        headers: {
-                            'Content-Type': 'text/plain;charset=utf-8',
-                        },
+                        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                         body: JSON.stringify({ action, payload })
                     });
 
-                    if (!response.ok) {
-                        throw new Error(`Erro de rede: ${response.statusText}`);
-                    }
+                    if (!response.ok) throw new Error(`Erro de rede: ${response.statusText}`);
                     
                     const result = await response.json();
                     
@@ -110,73 +106,37 @@
                     throw error;
                 }
             },
-
-            login: function(login, password) {
-                return this._callApi('login', { login, password });
-            },
-
-            getInitialData: function() {
-                return this._callApi('getInitialData');
-            },
-            
-            addEvent: function(eventData, currentUser) {
-                return this._callApi('addEvent', { eventData, currentUser });
-            },
-
-            updateEvent: function(eventId, eventData, currentUser) {
-                return this._callApi('updateEvent', { eventId, eventData, currentUser });
-            },
-            
-            deleteEvent: function(eventId) {
-                return this._callApi('deleteEvent', { eventId });
-            },
-
-            updateTable: function(tableName, newRecords, currentUser) {
-                return this._callApi('updateTable', { tableName, newRecords, currentUser });
-            },
-
-            updateRecord: function(tableName, recordId, recordData, currentUser) {
-                return this._callApi('updateRecord', { tableName, recordId, recordData, currentUser });
-            },
-            
-            deleteRecord: function(tableName, recordId) {
-                 return this._callApi('deleteRecord', { tableName, recordId });
-            }
+            login: function(login, password) { return this._callApi('login', { login, password }); },
+            getInitialData: function() { return this._callApi('getInitialData'); },
+            addEvent: function(eventData, currentUser) { return this._callApi('addEvent', { eventData, currentUser }); },
+            updateEvent: function(eventId, eventData, currentUser) { return this._callApi('updateEvent', { eventId, eventData, currentUser }); },
+            deleteEvent: function(eventId) { return this._callApi('deleteEvent', { eventId }); },
+            updateTable: function(tableName, newRecords, currentUser) { return this._callApi('updateTable', { tableName, newRecords, currentUser }); },
+            updateRecord: function(tableName, recordId, recordData, currentUser) { return this._callApi('updateRecord', { tableName, recordId, recordData, currentUser }); },
+            deleteRecord: function(tableName, recordId) { return this._callApi('deleteRecord', { tableName, recordId }); }
         };
 
-        // --- Componente da Logo ---
+        // --- COMPONENTES ---
+        // Todos os componentes auxiliares e de página são definidos aqui, ANTES do componente App principal.
+        
         const UserAppLogo = ({ className }) => (
             <svg viewBox="0 0 180 180" className={className} xmlns="http://www.w3.org/2000/svg">
-                <defs>
-                    <clipPath id="rounded-corners">
-                        <rect width="180" height="180" rx="35" ry="35" />
-                    </clipPath>
-                </defs>
+                <defs><clipPath id="rounded-corners"><rect width="180" height="180" rx="35" ry="35" /></clipPath></defs>
                 <g clipPath="url(#rounded-corners)">
                     <rect width="180" height="180" fill="#6d28d9" />
                     <path d="M45,40 a10,10 0 0,1 10,-10 h70 a10,10 0 0,1 10,10 v70 a10,10 0 0,1 -10,10 h-70 a10,10 0 0,1 -10,-10 Z" fill="white"/>
-                    <rect x="45" y="55" width="90" height="8" fill="#6d28d9"/>
-                    <rect x="62" y="22" width="12" height="20" rx="5" fill="white"/>
-                    <rect x="106" y="22" width="12" height="20" rx="5" fill="white"/>
+                    <rect x="45" y="55" width="90" height="8" fill="#6d28d9"/><rect x="62" y="22" width="12" height="20" rx="5" fill="white"/><rect x="106" y="22" width="12" height="20" rx="5" fill="white"/>
                     <path d="M60 95 l20 20 l45 -45" stroke="#6d28d9" strokeWidth="12" fill="none" strokeLinecap="round" strokeLinejoin="round" />
                     <text x="90" y="155" fontFamily="Arial, sans-serif" fontSize="24" fill="white" textAnchor="middle" fontWeight="bold">Agendei7</text>
                 </g>
             </svg>
         );
 
-
-        // --- Componentes da UI ---
         const Header = ({ title, onBack }) => (
             <header className="bg-white dark:bg-gray-800 shadow-md dark:shadow-gray-700 sticky top-0 z-10">
                 <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex items-center justify-between h-16">
-                        {onBack ? (
-                            <button onClick={onBack} className="text-violet-600 hover:text-violet-800 dark:text-violet-400 dark:hover:text-violet-300 transition">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                                </svg>
-                            </button>
-                        ) : <div className="w-6"></div>}
+                        {onBack ? (<button onClick={onBack} className="text-violet-600 hover:text-violet-800 dark:text-violet-400 dark:hover:text-violet-300 transition"><svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg></button>) : <div className="w-6"></div>}
                         <h1 className="text-xl font-bold text-gray-800 dark:text-gray-200">{title}</h1>
                         <div className="w-6"></div>
                     </div>
@@ -201,27 +161,6 @@
             );
         };
         
-        const NotificationChoiceModal = ({ isOpen, departmentName, onSendEmail, onSendWhatsApp, onClose }) => {
-            if (!isOpen) return null;
-            return (
-                <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4">
-                    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 w-full max-w-sm text-center animate-fade-in-scale">
-                        <h3 className="text-xl font-bold text-gray-800 dark:text-gray-200 mb-2">Notificar Departamento</h3>
-                        <p className="text-gray-600 dark:text-gray-400 mb-6">Como deseja notificar o departamento <span className="font-semibold">{departmentName}</span>?</p>
-                        <div className="flex flex-col gap-3">
-                            <button onClick={onSendWhatsApp} className="w-full flex items-center justify-center gap-2 bg-green-500 text-white font-semibold py-3 px-4 rounded-lg text-sm hover:bg-green-600 transition">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.894 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.5-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.626.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg> WhatsApp
-                            </button>
-                            <button onClick={onSendEmail} className="w-full flex items-center justify-center gap-2 bg-blue-500 text-white font-semibold py-3 px-4 rounded-lg text-sm hover:bg-blue-600 transition">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" /><path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" /></svg> E-mail
-                            </button>
-                            <button onClick={onClose} className="w-full bg-gray-200 text-gray-800 dark:bg-gray-600 dark:text-gray-200 font-semibold py-2 px-4 rounded-lg text-sm hover:bg-gray-300 dark:hover:bg-gray-500 transition">Cancelar</button>
-                        </div>
-                    </div>
-                </div>
-            );
-        };
-
         const LoadingModal = ({ isOpen, message }) => {
             if (!isOpen) return null;
             return (
@@ -234,76 +173,6 @@
             );
         };
         
-        const InfoToast = ({ isVisible, message }) => {
-            if (!isVisible) return null;
-            return (
-                <div className="fixed bottom-20 left-1/2 -translate-x-1/2 bg-green-500 text-white py-2 px-6 rounded-full shadow-lg z-50 animate-fade-in-out">
-                    {message}
-                </div>
-            );
-        };
-
-        const SuccessModal = ({ isOpen, title, message, onAddNew, onGoToDashboard }) => {
-            if (!isOpen) return null;
-            return (
-                <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4">
-                    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 w-full max-w-sm text-center animate-fade-in-scale">
-                        <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 dark:bg-green-900 mb-4">
-                            <svg className="h-6 w-6 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                            </svg>
-                        </div>
-                        <h3 className="text-xl font-bold text-gray-800 dark:text-gray-200 mb-2">{title}</h3>
-                        <p className="text-gray-600 dark:text-gray-400 mb-6">{message}</p>
-                        <div className="flex flex-col gap-3">
-                            <button onClick={onAddNew} className="w-full bg-violet-600 text-white font-semibold py-2 px-4 rounded-lg text-sm hover:bg-violet-700 transition">Inserir Novo Agendamento</button>
-                            <button onClick={onGoToDashboard} className="w-full bg-gray-200 text-gray-800 dark:bg-gray-600 dark:text-gray-200 font-semibold py-2 px-4 rounded-lg text-sm hover:bg-gray-300 dark:hover:bg-gray-500 transition">Retornar para tela inicial</button>
-                        </div>
-                    </div>
-                </div>
-            );
-        };
-
-        const UpdateResultModal = ({ status, onRetry, onGoBack, logMessage }) => {
-            if (status === 'idle' || status === 'loading') return null;
-            const isSuccess = status === 'success';
-            return (
-                 <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4">
-                    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 w-full max-w-md text-center animate-fade-in-scale">
-                        <div className={`mx-auto flex items-center justify-center h-12 w-12 rounded-full mb-4 ${isSuccess ? 'bg-green-100 dark:bg-green-900' : 'bg-red-100 dark:bg-red-900'}`}>
-                            {isSuccess ? (
-                                <svg className="h-6 w-6 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg>
-                            ) : (
-                                <svg className="h-6 w-6 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                            )}
-                        </div>
-                        <h3 className="text-xl font-bold text-gray-800 dark:text-gray-200 mb-2">{isSuccess ? "Atualização Concluída!" : "Falha na Atualização"}</h3>
-                        <p className="text-gray-600 dark:text-gray-400 mb-6">{isSuccess ? "Os dados da tabela foram atualizados com sucesso." : "Ocorreu um erro ao tentar atualizar os dados."}</p>
-                        {!isSuccess && logMessage && (
-                            <div className="bg-gray-100 dark:bg-gray-700 rounded-lg p-3 text-left text-xs text-gray-700 dark:text-gray-300 font-mono mb-6 overflow-x-auto">
-                                <p className="font-semibold mb-1">Log do Erro:</p>
-                                <pre>{logMessage}</pre>
-                            </div>
-                        )}
-                        <div className="flex flex-col gap-3">
-                           {isSuccess ? (
-                                <>
-                                    <button onClick={onRetry} className="w-full bg-violet-600 text-white font-semibold py-2 px-4 rounded-lg text-sm hover:bg-violet-700 transition">Realizar Novo Update</button>
-                                     <button onClick={onGoBack} className="w-full bg-gray-200 text-gray-800 dark:bg-gray-600 dark:text-gray-200 font-semibold py-2 px-4 rounded-lg text-sm hover:bg-gray-300 dark:hover:bg-gray-500 transition">Voltar para Configurações</button>
-                                </>
-                           ) : (
-                                <>
-                                    <button onClick={onRetry} className="w-full bg-violet-600 text-white font-semibold py-2 px-4 rounded-lg text-sm hover:bg-violet-700 transition">Tentar Novamente</button>
-                                     <button onClick={onGoBack} className="w-full bg-gray-200 text-gray-800 dark:bg-gray-600 dark:text-gray-200 font-semibold py-2 px-4 rounded-lg text-sm hover:bg-gray-300 dark:hover:bg-gray-500 transition">Voltar</button>
-                                </>
-                           )}
-                        </div>
-                    </div>
-                </div>
-            )
-        };
-
-
         const BottomNav = ({ activeView, setView }) => {
             const navItems = [
                 { id: 'dashboard', icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />, label: 'Início' },
@@ -325,9 +194,12 @@
         };
 
         const EventCard = ({ event, onClick }) => {
+            // Garante que a data é válida antes de criar o objeto Date
+            if (!event.date || typeof event.date !== 'string') return null;
             const eventDate = new Date(event.date + 'T00:00:00');
             const day = eventDate.getDate();
             const month = eventDate.toLocaleString('pt-BR', { month: 'short' }).replace('.', '');
+
             return (
                 <div onClick={onClick} className="bg-white dark:bg-gray-800 rounded-lg shadow-md flex items-center p-4 space-x-4 cursor-pointer hover:shadow-lg transition">
                     <div className="flex flex-col items-center justify-center bg-violet-100 dark:bg-violet-900/50 rounded-lg w-16 h-16 text-violet-700 dark:text-violet-300">
@@ -342,10 +214,6 @@
                 </div>
             );
         };
-       
-        // --- Telas (Views) ---
-        // FIX: All page components are now defined *before* the main App component.
-        // This resolves the "ReferenceError" because the functions exist before they are called.
 
         const LoginPage = ({ onLogin }) => {
             const [login, setLogin] = useState('admin');
@@ -363,7 +231,6 @@
                     setError('Login ou senha inválidos.');
                     setIsLoading(false);
                 }
-                // Se o login for bem-sucedido, o componente App irá recarregar e mostrar seu próprio spinner.
             };
 
             return (
@@ -379,12 +246,8 @@
                                 <label htmlFor="password"className="block text-black dark:text-white text-sm font-bold mb-2">Senha</label>
                                 <div className="relative">
                                     <input type={showPassword ? "text" : "password"} id="password" value={password} onChange={(e) => setPassword(e.target.value)} className="shadow appearance-none border rounded-lg w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:ring-2 focus:ring-violet-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
-                                     <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5">
-                                        {showPassword ? (
-                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-600 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" /></svg>
-                                        ) : (
-                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-600 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.522 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                                        )}
+                                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5">
+                                        {showPassword ? ( <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-600 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" /></svg> ) : ( <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-600 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.522 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg> )}
                                     </button>
                                 </div>
                             </div>
@@ -408,20 +271,17 @@
                         <h2 className="text-xl font-bold text-gray-800 dark:text-gray-200">Olá, {currentUser.name}!</h2>
                         <p className="text-gray-600 dark:text-gray-400">O que você gostaria de fazer hoje?</p>
                     </div>
-
-                    {currentUser.id === 'admin' && (
-                         <div className="mb-6">
+                    {currentUser.isAdmin && ( // Exemplo de verificação de admin
+                        <div className="mb-6">
                             <h3 className="text-lg font-bold text-gray-800 dark:text-gray-200 mb-3">Gerenciamento</h3>
                             <div className="grid grid-cols-3 gap-2">
                                 <button onClick={() => setView('addEvent')} className="bg-violet-600 text-white rounded-lg p-2 shadow-lg hover:bg-violet-700 transition flex flex-col items-center justify-center text-center h-24">
                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                                     <span className="font-semibold text-xs">Incluir Agendamento</span>
                                 </button>
-                                {/* Outros botões de admin podem ser adicionados aqui */}
                             </div>
                         </div>
                     )}
-
                     <div className="space-y-4">
                         <h3 className="text-lg font-bold text-gray-800 dark:text-gray-200 mb-3">Próximos Eventos</h3>
                         {(events && events.length > 0) ? events.map(event => (
@@ -440,87 +300,71 @@
                         <img src={currentUser.avatar} className="w-24 h-24 rounded-full mx-auto mb-4 object-cover" alt="Avatar"/>
                         <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200">{currentUser.name}</h2>
                         <p className="text-gray-500 dark:text-gray-400">{currentUser.email}</p>
-                        <button onClick={onLogout} className="mt-8 bg-red-500 text-white font-bold py-3 px-4 rounded-lg hover:bg-red-600 transition">
-                            Sair
-                        </button>
+                        <div className="mt-6 space-y-2">
+                            <button onClick={() => setView('myScales')} className="w-full text-left bg-gray-50 dark:bg-gray-700 p-3 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 transition">Minhas Escalas</button>
+                            <button onClick={() => setView('settings')} className="w-full text-left bg-gray-50 dark:bg-gray-700 p-3 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 transition">Configurações</button>
+                        </div>
+                        <button onClick={onLogout} className="mt-8 w-full bg-red-500 text-white font-bold py-3 px-4 rounded-lg hover:bg-red-600 transition">Sair</button>
                     </main>
                 </div>
             );
         };
-
+        
         // --- Componente Principal ---
         function App() {
             const [currentUser, setCurrentUser] = useState(null);
             const [view, setView] = useState('login');
-            const [appData, setAppData] = useState({
-                users: {}, events: [], scales: [], assignments: {}, departments: {}, access: {}
-            });
+            const [appData, setAppData] = useState({ events: [], scales: [], assignments: {}, departments: {}, access: {}, users: {} });
             const [loading, setLoading] = useState(false);
             const [initialLoad, setInitialLoad] = useState(true);
             const [selectedEventId, setSelectedEventId] = useState(null);
-            const [editingEventId, setEditingEventId] = useState(null);
-            const [managingTable, setManagingTable] = useState(null);
             const [theme, setTheme] = useState('light');
 
             useEffect(() => {
-                if (theme === 'dark') {
-                    document.documentElement.classList.add('dark');
-                } else {
-                    document.documentElement.classList.remove('dark');
-                }
+                if (theme === 'dark') document.documentElement.classList.add('dark');
+                else document.documentElement.classList.remove('dark');
             }, [theme]);
             
             useEffect(() => {
                 setTimeout(() => setInitialLoad(false), 500);
             }, []);
 
+            const fetchAllData = useCallback(() => {
+                setLoading(true);
+                api.getInitialData()
+                    .then(data => setAppData(data))
+                    .catch(error => alert("Não foi possível carregar os dados do servidor. Tente recarregar a página."))
+                    .finally(() => setLoading(false));
+            }, []);
+
             useEffect(() => {
                 if (currentUser) {
-                    setLoading(true);
-                    api.getInitialData()
-                        .then(data => {
-                            setAppData(data);
-                        })
-                        .catch(error => {
-                            console.error("Falha ao carregar dados iniciais:", error);
-                            alert("Não foi possível carregar os dados do servidor. Tente recarregar a página.");
-                        })
-                        .finally(() => {
-                            setLoading(false);
-                        });
+                    fetchAllData();
                 }
-            }, [currentUser]);
+            }, [currentUser, fetchAllData]);
             
             const handleLogin = async (login, password) => {
                 setLoading(true);
                 try {
                     const user = await api.login(login, password);
-                    if (user) {
-                        setCurrentUser(user);
-                        setView('dashboard');
-                        return true;
-                    } else {
-                        return false;
-                    }
+                    setCurrentUser(user); // Define o usuário para disparar o useEffect de busca de dados
+                    setView('dashboard');
+                    return true;
                 } catch (error) {
-                    return false;
+                    return false; // O erro já foi logado na função da API
                 } finally {
-                    setLoading(false);
+                    // O setLoading será controlado pelo useEffect de busca de dados
                 }
             };
             
             const handleLogout = () => {
                 setCurrentUser(null);
-                setAppData({ users: {}, events: [], scales: [], assignments: {}, departments: {}, access: {} });
+                setAppData({ events: [], scales: [], assignments: {}, departments: {}, access: {}, users: {} });
                 setView('login');
             };
 
-            const handleUpdateAppData = (key, newData) => {
-                setAppData(prev => ({ ...prev, [key]: newData }));
-            };
-
             if (initialLoad || loading) {
-                return ( <div className="min-h-screen flex justify-center items-center"> <div className="loader"></div> </div> );
+                return ( <div className="min-h-screen flex justify-center items-center bg-gray-100 dark:bg-gray-900"> <div className="loader"></div> </div> );
             }
 
             const renderView = () => {
@@ -529,25 +373,13 @@
                 switch (view) {
                     case 'dashboard': return <DashboardPage currentUser={currentUser} setView={setView} setEventId={setSelectedEventId} events={appData.events || []} />;
                     case 'calendar': return (
-                           <div>
-                            <Header title="Calendário" onBack={() => setView('dashboard')} />
-                             <p className="p-4 text-center dark:text-gray-300">Página de calendário a ser implementada com dados da API.</p>
-                           </div>
-                        );
-                    case 'profile': return <ProfilePage currentUser={currentUser} onLogout={handleLogout} setView={setView} />;
-                    case 'addEvent': return (
-                         <div>
-                            <Header title="Adicionar Evento" onBack={() => setView('dashboard')} />
-                            <p className="p-4 text-center dark:text-gray-300">Formulário para adicionar evento a ser implementado.</p>
-                        </div>
-                    );
-                    case 'eventDetail': return (
                         <div>
-                            <Header title="Detalhes do Evento" onBack={() => setView('dashboard')} />
-                            <p className="p-4 text-center dark:text-gray-300">Página de detalhes do evento (ID: {selectedEventId}) a ser implementada com dados da API.</p>
+                            <Header title="Calendário" onBack={() => setView('dashboard')} />
+                            <p className="p-4 text-center dark:text-gray-300">Página de calendário a ser implementada.</p>
                         </div>
                     );
-                    
+                    case 'profile': return <ProfilePage currentUser={currentUser} onLogout={handleLogout} setView={setView} />;
+                    // Adicione os outros casos de 'view' aqui, passando os dados de `appData` e as funções `api` conforme necessário.
                     default: return <DashboardPage currentUser={currentUser} setView={setView} setEventId={setSelectedEventId} events={appData.events || []} />;
                 }
             };
