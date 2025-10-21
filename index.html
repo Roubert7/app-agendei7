@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Agendei7</title>
+    <title>Agendei7 - Protótipo</title>
 
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -194,12 +194,10 @@
         };
 
         const EventCard = ({ event, onClick }) => {
-            // Garante que a data é válida antes de criar o objeto Date
             if (!event.date || typeof event.date !== 'string') return null;
             const eventDate = new Date(event.date + 'T00:00:00');
             const day = eventDate.getDate();
             const month = eventDate.toLocaleString('pt-BR', { month: 'short' }).replace('.', '');
-
             return (
                 <div onClick={onClick} className="bg-white dark:bg-gray-800 rounded-lg shadow-md flex items-center p-4 space-x-4 cursor-pointer hover:shadow-lg transition">
                     <div className="flex flex-col items-center justify-center bg-violet-100 dark:bg-violet-900/50 rounded-lg w-16 h-16 text-violet-700 dark:text-violet-300">
@@ -214,7 +212,7 @@
                 </div>
             );
         };
-
+        
         const LoginPage = ({ onLogin }) => {
             const [login, setLogin] = useState('admin');
             const [password, setPassword] = useState('admin');
@@ -262,7 +260,7 @@
                 </div>
             );
         };
-
+        
         const DashboardPage = ({ currentUser, setView, setEventId, events }) => (
             <div>
                 <Header title="Início" />
@@ -271,7 +269,7 @@
                         <h2 className="text-xl font-bold text-gray-800 dark:text-gray-200">Olá, {currentUser.name}!</h2>
                         <p className="text-gray-600 dark:text-gray-400">O que você gostaria de fazer hoje?</p>
                     </div>
-                    {currentUser.isAdmin && ( // Exemplo de verificação de admin
+                    {currentUser.isAdmin && (
                         <div className="mb-6">
                             <h3 className="text-lg font-bold text-gray-800 dark:text-gray-200 mb-3">Gerenciamento</h3>
                             <div className="grid grid-cols-3 gap-2">
@@ -309,8 +307,29 @@
                 </div>
             );
         };
-        
-        // --- Componente Principal ---
+
+        const CalendarPage = ({ setView, setEventId, events }) => {
+            const [currentDate, setCurrentDate] = useState(new Date()); 
+            // O restante da lógica do CalendarPage...
+            return (
+                <div>
+                    <Header title="Calendário" onBack={() => setView('dashboard')} />
+                    <p className="p-4 text-center dark:text-gray-300">Página de calendário a ser implementada.</p>
+                </div>
+            )
+        }
+
+        // --- Adicionar placeholders para as outras páginas para evitar erros ---
+        const AddEventPage = ({setView}) => (<div><Header title="Adicionar Evento" onBack={() => setView('dashboard')}/><p className="p-4">Carregando...</p></div>);
+        const EditScalesPage = ({setView}) => (<div><Header title="Editar Escalas" onBack={() => setView('dashboard')}/><p className="p-4">Carregando...</p></div>);
+        const GenerateRoteiroPage = ({setView}) => (<div><Header title="Gerar Roteiro" onBack={() => setView('dashboard')}/><p className="p-4">Carregando...</p></div>);
+        const EventDetailPage = ({setView, eventId}) => (<div><Header title="Detalhes do Evento" onBack={() => setView('dashboard')}/><p className="p-4">Carregando detalhes do evento {eventId}...</p></div>);
+        const MyScalesPage = ({setView}) => (<div><Header title="Minhas Escalas" onBack={() => setView('profile')}/><p className="p-4">Carregando...</p></div>);
+        const DepartmentDataPage = ({setView}) => (<div><Header title="Dados do Departamento" onBack={() => setView('profile')}/><p className="p-4">Carregando...</p></div>);
+        const SettingsPage = ({setView}) => (<div><Header title="Configurações" onBack={() => setView('profile')}/><p className="p-4">Carregando...</p></div>);
+        const ManageTablePage = ({setView, tableName}) =>(<div><Header title={`Gerenciar ${tableName}`} onBack={() => setView('settings')}/><p className="p-4">Carregando...</p></div>)
+
+        // --- COMPONENTE PRINCIPAL ---
         function App() {
             const [currentUser, setCurrentUser] = useState(null);
             const [view, setView] = useState('login');
@@ -318,6 +337,7 @@
             const [loading, setLoading] = useState(false);
             const [initialLoad, setInitialLoad] = useState(true);
             const [selectedEventId, setSelectedEventId] = useState(null);
+            const [managingTable, setManagingTable] = useState(null);
             const [theme, setTheme] = useState('light');
 
             useEffect(() => {
@@ -330,11 +350,21 @@
             }, []);
 
             const fetchAllData = useCallback(() => {
+                console.log("Buscando dados iniciais...");
                 setLoading(true);
                 api.getInitialData()
-                    .then(data => setAppData(data))
-                    .catch(error => alert("Não foi possível carregar os dados do servidor. Tente recarregar a página."))
-                    .finally(() => setLoading(false));
+                    .then(data => {
+                        console.log("Dados recebidos:", data);
+                        setAppData(data);
+                    })
+                    .catch(error => {
+                        console.error("Erro em fetchAllData:", error);
+                        alert("Não foi possível carregar os dados do servidor. Tente recarregar a página.");
+                    })
+                    .finally(() => {
+                        console.log("Busca de dados finalizada.");
+                        setLoading(false);
+                    });
             }, []);
 
             useEffect(() => {
@@ -344,16 +374,12 @@
             }, [currentUser, fetchAllData]);
             
             const handleLogin = async (login, password) => {
-                setLoading(true);
                 try {
                     const user = await api.login(login, password);
                     setCurrentUser(user); // Define o usuário para disparar o useEffect de busca de dados
-                    setView('dashboard');
                     return true;
                 } catch (error) {
                     return false; // O erro já foi logado na função da API
-                } finally {
-                    // O setLoading será controlado pelo useEffect de busca de dados
                 }
             };
             
@@ -363,32 +389,41 @@
                 setView('login');
             };
 
-            if (initialLoad || loading) {
+            if (initialLoad || (loading && !currentUser)) { // Mostra o spinner inicial ou o de login
                 return ( <div className="min-h-screen flex justify-center items-center bg-gray-100 dark:bg-gray-900"> <div className="loader"></div> </div> );
             }
-
-            const renderView = () => {
+            
+            // Lógica de renderização principal
+            const renderContent = () => {
                 if (!currentUser) return <LoginPage onLogin={handleLogin} />;
                 
+                if(loading) { // Mostra o spinner de carregamento de dados após o login
+                    return ( <div className="min-h-screen flex justify-center items-center bg-gray-100 dark:bg-gray-900"> <div className="loader"></div> </div> );
+                }
+
                 switch (view) {
                     case 'dashboard': return <DashboardPage currentUser={currentUser} setView={setView} setEventId={setSelectedEventId} events={appData.events || []} />;
-                    case 'calendar': return (
-                        <div>
-                            <Header title="Calendário" onBack={() => setView('dashboard')} />
-                            <p className="p-4 text-center dark:text-gray-300">Página de calendário a ser implementada.</p>
-                        </div>
-                    );
+                    case 'calendar': return <CalendarPage setView={setView} setEventId={setSelectedEventId} events={appData.events || []} />;
                     case 'profile': return <ProfilePage currentUser={currentUser} onLogout={handleLogout} setView={setView} />;
-                    // Adicione os outros casos de 'view' aqui, passando os dados de `appData` e as funções `api` conforme necessário.
+                    
+                    // Adicione as outras páginas aqui, passando os dados do appData
+                    case 'addEvent': return <AddEventPage setView={setView} />;
+                    case 'editScales': return <EditScalesPage setView={setView} />;
+                    case 'generateRoteiro': return <GenerateRoteiroPage setView={setView} />;
+                    case 'eventDetail': return <EventDetailPage setView={setView} eventId={selectedEventId} />;
+                    case 'myScales': return <MyScalesPage setView={setView} />;
+                    case 'departmentData': return <DepartmentDataPage setView={setView} />;
+                    case 'settings': return <SettingsPage setView={setView} setManagingTable={setManagingTable}/>;
+                    case 'manageTable': return <ManageTablePage setView={setView} tableName={managingTable} />;
                     default: return <DashboardPage currentUser={currentUser} setView={setView} setEventId={setSelectedEventId} events={appData.events || []} />;
                 }
             };
             
-            const showNav = currentUser && view !== 'login';
+            const showNav = currentUser && !loading;
 
             return (
                 <div className="bg-gray-100 dark:bg-gray-900 min-h-screen">
-                    {renderView()}
+                    {renderContent()}
                     {showNav && <BottomNav activeView={view} setView={setView} />}
                 </div>
             );
