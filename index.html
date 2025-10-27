@@ -1,5 +1,3 @@
-//*************VERSÃO 1 DO PROJETO DO FRONT-END | APP: AGENDEI7*************//
-
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -15,7 +13,63 @@
         darkMode: 'class'
       }
     </script>
-    // --- CONEXÃO COM O BACKEND (GOOGLE APPS SCRIPT) ---
+
+    <!-- React -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" id="manifest">
+
+    <!-- Theme Color -->
+    <meta name="theme-color" content="#6d28d9">
+
+    <!-- Icons -->
+    <link rel="apple-touch-icon" href="icon-192x192.png">
+
+    <style>
+        /* Estilo para a animação de carregamento */
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-radius: 50%;
+            border-top: 4px solid #6d28d9;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Animação para o Modal */
+        @keyframes fade-in-scale {
+            0% { transform: scale(0.95); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .animate-fade-in-scale {
+            animation: fade-in-scale 0.2s ease-out forwards;
+        }
+
+        /* Animação para o Toast */
+        @keyframes fade-in-out {
+            0% { opacity: 0; transform: translateY(20px); }
+            10% { opacity: 1; transform: translateY(0); }
+            90% { opacity: 1; transform: translateY(0); }
+            100% { opacity: 0; transform: translateY(20px); }
+        }
+        .animate-fade-in-out {
+            animation: fade-in-out 3s ease-in-out forwards;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo, useRef } = React;
+         // --- CONEXÃO COM O BACKEND (GOOGLE APPS SCRIPT) ---
 // URL do seu script publicado como aplicativo web.
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzVSGkDZmhLXQPR8lnswoBxthzlEEgNocTTdKS71ok6B2rZvzY7yujOGzLci4-B-GCC/exec';
 
@@ -74,62 +128,6 @@ const api = {
 
     // ... e assim por diante para todas as outras ações (updateEvent, deleteEvent, etc.)
 };
-    <!-- React -->
-    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
-    <!-- PWA Manifest -->
-    <link rel="manifest" id="manifest">
-
-    <!-- Theme Color -->
-    <meta name="theme-color" content="#6d28d9">
-
-    <!-- Icons -->
-    <link rel="apple-touch-icon" href="icon-192x192.png">
-
-    <style>
-        /* Estilo para a animação de carregamento */
-        .loader {
-            border: 4px solid #f3f3f3;
-            border-radius: 50%;
-            border-top: 4px solid #6d28d9;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        /* Animação para o Modal */
-        @keyframes fade-in-scale {
-            0% { transform: scale(0.95); opacity: 0; }
-            100% { transform: scale(1); opacity: 1; }
-        }
-        .animate-fade-in-scale {
-            animation: fade-in-scale 0.2s ease-out forwards;
-        }
-
-        /* Animação para o Toast */
-        @keyframes fade-in-out {
-            0% { opacity: 0; transform: translateY(20px); }
-            10% { opacity: 1; transform: translateY(0); }
-            90% { opacity: 1; transform: translateY(0); }
-            100% { opacity: 0; transform: translateY(20px); }
-        }
-        .animate-fade-in-out {
-            animation: fade-in-out 3s ease-in-out forwards;
-        }
-    </style>
-</head>
-<body class="bg-gray-100 dark:bg-gray-900">
-    <div id="root"></div>
-
-    <script type="text/babel">
-        const { useState, useEffect, useMemo, useRef } = React;
-        
         // --- Componente da Logo (recriada em SVG a partir da imagem do usuário) ---
         const UserAppLogo = ({ className }) => (
             <svg viewBox="0 0 180 180" className={className} xmlns="http://www.w3.org/2000/svg">
