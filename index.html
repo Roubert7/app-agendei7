@@ -189,13 +189,14 @@ const fileToBase64 = (file) => new Promise((resolve, reject) => {
 
 const getDriveDirectImage = (url) => {
     if (!url) return '';
-    // Tenta extrair o ID entre '/d/' e '/' (ex: /d/12345abc/view)
+    // Regex para extrair o ID do arquivo entre '/d/' e '/'
     const match = url.match(/\/d\/(.+?)(\/|$)/);
     if (match && match[1]) {
-        // Retorna URL direta de renderização do Google
-        return `https://lh3.googleusercontent.com/d/${match[1]}`;
+        // Retorna a API de Thumbnail do Google Drive
+        // sz=w1000 força uma largura de 1000px (alta qualidade)
+        return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w1000`;
     }
-    return url; // Retorna original se não conseguir processar
+    return url;
 };
 
 const NotificationCenterModal = ({ isOpen, onClose, mockDepartments = {} }) => {
@@ -454,10 +455,14 @@ const NotificationCenterModal = ({ isOpen, onClose, mockDepartments = {} }) => {
                                                           <img 
                                                               src={getDriveDirectImage(post.file.url)} 
                                                               alt="Anexo" 
+                                                              referrerPolicy="no-referrer"  // <--- ADICIONE ISSO (Vital para imagens do Google)
                                                               className="rounded-lg border w-full object-cover hover:opacity-90 transition shadow-sm"
                                                               onError={(e) => {
+                                                                  // Evita loop infinito se a imagem falhar
                                                                   e.target.onerror = null; 
-                                                                  e.target.src = "https://via.placeholder.com/400x300?text=Erro+ao+Carregar+Imagem"; // Fallback visual
+                                                                  // Mostra um placeholder amigável se falhar
+                                                                  e.target.style.display = 'none'; 
+                                                                  e.target.parentNode.innerHTML += '<div class="p-4 bg-gray-100 text-gray-500 text-xs rounded border text-center">Imagem não disponível (Clique para ver)</div>';
                                                               }}
                                                           />
                                                           {/* Pequeno ícone indicando que é clicável */}
