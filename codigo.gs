@@ -362,17 +362,34 @@ function getEventos() {
 
 function verificarAcesso(login, senha) {
   try {
-    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("ACESSO");
-    if (!sheet) throw new Error("Aba ACESSO não encontrada.");
-    const data = sheet.getRange(2, 2, sheet.getLastRow() - 1, 6).getValues();
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("ACESSOS"); // Nome corrigido para plural conforme imagem
+    if (!sheet) throw new Error("Aba 'ACESSOS' não encontrada.");
+    
+    // Pega da linha 2 até a última, colunas A(1) até G(7)
+    // Colunas na Imagem: 
+    // A=ID, B=LOGIN, C=SENHA, D=DEPTO, E=RESP, F=EMAIL, G=APROVACAO
+    const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 7).getValues();
     
     const loginUser = String(login).trim().toLowerCase();
     const senhaUser = String(senha).trim();
 
     for (let i = 0; i < data.length; i++) {
-      if (String(data[i][0]).trim().toLowerCase() === loginUser && String(data[i][1]).trim() === senhaUser) {
-        if (String(data[i][5]).trim().toUpperCase() === 'A') {
-          return { acesso: true, perfil: data[i][2] };
+      // Coluna B (índice 1) = Login
+      // Coluna C (índice 2) = Senha
+      // Coluna G (índice 6) = Aprovacao
+      
+      const dbLogin = String(data[i][1]).trim().toLowerCase();
+      const dbSenha = String(data[i][2]).trim();
+      const dbStatus = String(data[i][6]).trim().toUpperCase();
+
+      if (dbLogin === loginUser && dbSenha === senhaUser) {
+        if (dbStatus === 'A') {
+          return { 
+            acesso: true, 
+            perfil: data[i][3], // Coluna D = Departamento
+            email: data[i][5],  // Coluna F = Email
+            nome: data[i][4]    // Coluna E = Responsável
+          };
         } else {
           return { acesso: false, motivo: 'STATUS_INVALIDO' };
         }
@@ -380,7 +397,8 @@ function verificarAcesso(login, senha) {
     }
     return { acesso: false, motivo: 'CREDENCIAL_INVALIDA' };
   } catch (e) {
-    throw new Error("Erro no login: " + e.message);
+    console.error("Erro Login: " + e.message);
+    throw new Error("Erro ao verificar credenciais: " + e.message);
   }
 }
 
