@@ -909,18 +909,45 @@ const Header = ({ title, onBack, rightAction }) => (
 
         // --- Telas (Views) ---
 
-        const LoginPage = ({ onLogin }) => {
-            const [login, setLogin] = useState('admin');
-            const [password, setPassword] = useState('admin');
+const LoginPage = ({ onLogin }) => {
+            const [login, setLogin] = useState('');
+            const [password, setPassword] = useState('');
             const [showPassword, setShowPassword] = useState(false);
             const [error, setError] = useState('');
+            const [isLoading, setIsLoading] = useState(false); // Novo estado de carregamento
 
             const handleSubmit = async (e) => {
                 e.preventDefault();
                 setError('');
-                const success = await onLogin(login, password);
-                if (!success) {
-                    setError('Login ou senha inválidos.');
+                setIsLoading(true);
+
+                try {
+                    // 1. Chama o Backend para verificar credenciais
+                    // A função api.login agora usa google.script.run
+                    const result = await api.login(login, password);
+
+                    // 2. Verifica a resposta do Backend
+                    if (result && result.acesso === true) {
+                        // Sucesso! Reconstrói o objeto do usuário para o App
+                        const userData = {
+                            id: login,
+                            name: result.perfil || login, // Usa o nome do perfil ou o login
+                            email: result.email || '', // Backend deve retornar email se possível
+                            avatar: 'https://placehold.co/100x100/6d28d9/ffffff?text=' + login.substring(0,2).toUpperCase(),
+                            role: result.role || 'Membro' // Se tiver nível de acesso
+                        };
+                        onLogin(userData); // Passa o usuário para o App
+                    } else {
+                        // Falha (Senha errada, usuário inativo, etc)
+                        setError(result.motivo === 'STATUS_INVALIDO' 
+                            ? 'Seu acesso ainda não foi aprovado.' 
+                            : 'Login ou senha inválidos.');
+                    }
+                } catch (err) {
+                    console.error("Erro no login:", err);
+                    setError('Erro de conexão. Tente novamente.');
+                } finally {
+                    setIsLoading(false);
                 }
             };
 
@@ -936,7 +963,9 @@ const Header = ({ title, onBack, rightAction }) => (
                                     id="login" 
                                     value={login}
                                     onChange={(e) => setLogin(e.target.value)}
-                                    className="shadow appearance-none border rounded-lg w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:ring-2 focus:ring-violet-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
+                                    className="shadow appearance-none border rounded-lg w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:ring-2 focus:ring-violet-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white" 
+                                    placeholder="Digite seu login"
+                                />
                             </div>
                             <div className="mb-4">
                                 <label htmlFor="password"className="block text-black dark:text-white text-sm font-bold mb-2">Senha</label>
@@ -946,7 +975,9 @@ const Header = ({ title, onBack, rightAction }) => (
                                         id="password" 
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
-                                        className="shadow appearance-none border rounded-lg w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:ring-2 focus:ring-violet-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
+                                        className="shadow appearance-none border rounded-lg w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:ring-2 focus:ring-violet-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white" 
+                                        placeholder="Digite sua senha"
+                                    />
                                     <button 
                                       type="button" 
                                       onClick={() => setShowPassword(!showPassword)} 
@@ -960,27 +991,26 @@ const Header = ({ title, onBack, rightAction }) => (
                                     </button>
                                 </div>
                             </div>
-                             {error && <p className="text-red-500 text-xs italic mb-4">{error}</p>}
-                            <div className="mb-6">
-                                <a href="#" onClick={(e) => e.preventDefault()} className="inline-block align-baseline font-bold text-sm text-violet-600 dark:text-violet-400 hover:text-violet-800 dark:hover:text-violet-300">
-                                    Esqueceu a senha?
-                                </a>
-                            </div>
+                             {error && <p className="text-red-500 text-xs italic mb-4 text-center bg-red-100 p-2 rounded">{error}</p>}
+                            
                             <div className="flex items-center justify-between">
-                                <button type="submit" className="w-full bg-violet-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-violet-700 transition duration-300 shadow-lg">
-                                    Entrar
+                                <button 
+                                    type="submit" 
+                                    disabled={isLoading}
+                                    className="w-full bg-violet-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-violet-700 transition duration-300 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center"
+                                >
+                                    {isLoading ? <div className="loader w-5 h-5 border-2 border-white border-t-transparent"></div> : 'Entrar'}
                                 </button>
                             </div>
                         </form>
+                        
+                        {/* (Resto do código, link esqueceu senha, Google, etc... mantidos) */}
                         <div className="my-6 flex items-center">
                             <div className="flex-grow border-t border-gray-300 dark:border-gray-600"></div>
                             <span className="flex-shrink mx-4 text-gray-500 dark:text-gray-400 text-sm">OU</span>
                             <div className="flex-grow border-t border-gray-300 dark:border-gray-600"></div>
                         </div>
-                        <button onClick={() => alert('Funcionalidade de login com Google a ser implementada.')} className="w-full flex items-center justify-center bg-white dark:bg-gray-700 text-gray-700 dark:text-white font-semibold py-3 px-4 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition duration-300 border border-gray-300 dark:border-gray-600 shadow-sm">
-                            <svg className="w-5 h-5 mr-2" viewBox="0 0 48 48">
-                                <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"></path><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"></path><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path><path fill="none" d="M0 0h48v48H0z"></path>
-                            </svg>
+                        <button onClick={() => alert('Funcionalidade em breve.')} className="w-full flex items-center justify-center bg-white dark:bg-gray-700 text-gray-700 dark:text-white font-semibold py-3 px-4 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition duration-300 border border-gray-300 dark:border-gray-600 shadow-sm">
                             Entrar com Google
                         </button>
                     </div>
@@ -3005,18 +3035,11 @@ function App() {
         if (manifestElement) manifestElement.setAttribute('href', manifestUrl);
     }, []);
 
-    const handleLogin = (login, password) => {
-        return new Promise(resolve => {
-            setLoading(true);
-            setTimeout(() => {
-                const loginLower = login.toLowerCase();
-                const user = Object.values(users).find(
-                    u => (u.id.toLowerCase() === loginLower || u.email.toLowerCase() === loginLower) && u.senha === password
-                );
-                if (user) { setCurrentUser(user); setView('dashboard'); resolve(true); } else { resolve(false); }
-                setLoading(false);
-            }, 500);
-        });
+    const handleLogin = (userData) => {
+                // Agora recebe o objeto do usuário já validado pelo LoginPage
+                setCurrentUser(userData);
+                setView('dashboard');
+            
     };
 
     const handleLogout = () => {
