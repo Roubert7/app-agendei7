@@ -14,11 +14,32 @@ const MURAL_SHEET_NAME = "MURAL_POSTAGENS";
  * Não precisa de URL, funciona em /dev e /exec.
  */
 function handleApiRequest(data) {
-  // Garante que é um objeto JSON
-  const request = (typeof data === 'string') ? JSON.parse(data) : data;
-  
-  // Envia para o processador central
-  return processarAcao(request.action, request.payload);
+  try {
+    // Garante que é um objeto JSON
+    const request = (typeof data === 'string') ? JSON.parse(data) : data;
+    
+    // Processa a lógica
+    const result = processarAcao(request.action, request.payload);
+    
+    // VERIFICAÇÃO DE ERRO INTERNO
+    // Se o próprio processarAcao retornou um erro formatado (ex: {status: 'error'...})
+    if (result && result.status === 'error') {
+      return result;
+    }
+
+    // SUCESSO: Embrulha o resultado no formato padrão API
+    return { 
+      status: 'success', 
+      data: result 
+    };
+
+  } catch (e) {
+    // Captura erros gerais de execução (ex: JSON inválido na entrada)
+    return { 
+      status: 'error', 
+      message: "Erro fatal no Backend: " + e.toString() 
+    };
+  }
 }
 
 /**
@@ -219,31 +240,67 @@ function createMuralPostEntry(postData, fileUrl) {
     }
 }
 
+/**
+ * Função Blindada para buscar posts
+ * Corrige o erro de leitura de datas em formato texto
+ */
 function getMuralPosts() {
   try {
-    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(MURAL_SHEET_NAME);
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("MURAL_POSTAGENS");
+    
+    // Verifica se a aba existe e tem dados além do cabeçalho
     if (!sheet || sheet.getLastRow() < 2) return [];
 
+    // Pega os dados da linha 2 até a última, colunas A(1) até I(9)
     const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 9).getValues();
     
-    const posts = data.map(row => ({
-      id: row[0],
-      date: Utilities.formatDate(new Date(row[1]), Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm"),
-      title: row[2],
-      content: row[3],
-      priority: row[4],
-      user: row[5],
-      avatar: row[5] ? row[5].substring(0, 3).toUpperCase() : 'ADM',
-      file: row[6] ? { 
-        url: row[6],
-        name: row[7] || 'Arquivo Anexado',
-        type: row[8] || 'application/octet-stream'
-      } : null
-    }));
+    const posts = data.map(row => {
+      // TRATAMENTO ROBUSTO DE DATA
+      let dataFormatada = row[1];
+      
+      // Se for um objeto de data real do Google Sheets
+      if (row[1] instanceof Date) {
+         try {
+           dataFormatada = Utilities.formatDate(row[1], Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm");
+         } catch (err) {
+           dataFormatada = "Data Inválida";
+         }
+      } 
+      // Se já for texto (ex: '18/11/2025'), mantemos como está
+      else {
+         dataFormatada = String(row[1]);
+      }
 
+      // TRATAMENTO DE AUTOR/AVATAR (Evita erro se autor estiver vazio)
+      const autor = row[5] ? String(row[5]) : 'Admin';
+      const avatarLetras = autor.length >= 3 ? autor.substring(0, 3).toUpperCase() : autor.toUpperCase();
+
+      return {
+        id: row[0],
+        date: dataFormatada,
+        title: row[2],
+        content: row[3],
+        priority: row[4],
+        user: autor,
+        avatar: avatarLetras,
+        // Monta anexo apenas se tiver URL (Coluna G - índice 6)
+        file: row[6] ? { 
+          url: row[6],
+          name: row[7] || 'Arquivo Anexado',
+          type: row[8] || 'application/octet-stream'
+        } : null
+      };
+    });
+
+    // Retorna invertido para os posts mais novos aparecerem primeiro
     return posts.reverse();
+
   } catch (e) {
-    console.error("Erro getMuralPosts: " + e.message);
+    // Log do erro real no painel de execuções do Apps Script
+    console.error("ERRO FATAL em getMuralPosts: " + e.message);
+    console.error("Stack: " + e.stack);
+    
+    // Retorna lista vazia para o app não travar, mas loga o erro
     return [];
   }
 }
