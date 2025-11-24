@@ -187,6 +187,17 @@ const fileToBase64 = (file) => new Promise((resolve, reject) => {
     reader.onerror = error => reject(error);
 });
 
+const getDriveDirectImage = (url) => {
+    if (!url) return '';
+    // Tenta extrair o ID entre '/d/' e '/' (ex: /d/12345abc/view)
+    const match = url.match(/\/d\/(.+?)(\/|$)/);
+    if (match && match[1]) {
+        // Retorna URL direta de renderização do Google
+        return `https://lh3.googleusercontent.com/d/${match[1]}`;
+    }
+    return url; // Retorna original se não conseguir processar
+};
+
 const NotificationCenterModal = ({ isOpen, onClose, mockDepartments = {} }) => {
     // ... (Estados iniciais mantidos iguais)
     const [activeTab, setActiveTab] = useState('central'); 
@@ -438,10 +449,31 @@ const NotificationCenterModal = ({ isOpen, onClose, mockDepartments = {} }) => {
                                             {post.file && post.file.url && (
                                                 <div className="mt-3">
                                                     {post.file.type && post.file.type.toUpperCase().includes('IMAGE') ? (
-                                                         <img src={post.file.url} alt="Anexo" className="rounded-lg border max-w-sm w-full" />
-                                                    ) : (
-                                                        <a href={post.file.url} target="_blank" className="flex items-center gap-2 text-xs font-bold hover:underline"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.414a2 2 0 00-2.828-2.828L10 10.586V13a2 2 0 104 0V7.414a2 2 0 10-4 0v5.172a2 2 0 102.828 2.828l3.964-3.964A2 2 0 0017.5 8.5V6.5a2 2 0 00-2-2h-2a2 2 0 00-2 2v2.172a2 2 0 00.586 1.414L14.5 14.5a2 2 0 002.828-2.828L11.586 7.5a2 2 0 00-1.414-1.414H7.5a2 2 0 00-2 2v2a2 2 0 002 2h2.172a2 2 0 001.414-.586L14.5 9.5a2 2 0 001.414-1.414V6.5a2 2 0 00-2-2H10.5a2 2 0 00-2 2v2.172a2 2 0 00.586 1.414L14.5 14.5a2 2 0 002.828-2.828L11.586 7.5a2 2 0 00-1.414-1.414H7.5a2 2 0 00-2 2v2a2 2 0 002 2h2.172a2 2 0 001.414-.586z" /></svg>{post.file.name}</a>
-                                                    )}
+                                                      /* IMAGEM COM LINK PARA O DRIVE */
+                                                      <a href={post.file.url} target="_blank" rel="noopener noreferrer" className="block mt-2 group relative max-w-sm">
+                                                          <img 
+                                                              src={getDriveDirectImage(post.file.url)} 
+                                                              alt="Anexo" 
+                                                              className="rounded-lg border w-full object-cover hover:opacity-90 transition shadow-sm"
+                                                              onError={(e) => {
+                                                                  e.target.onerror = null; 
+                                                                  e.target.src = "https://via.placeholder.com/400x300?text=Erro+ao+Carregar+Imagem"; // Fallback visual
+                                                              }}
+                                                          />
+                                                          {/* Pequeno ícone indicando que é clicável */}
+                                                          <div className="absolute bottom-2 right-2 bg-black/50 text-white p-1 rounded opacity-0 group-hover:opacity-100 transition text-xs">
+                                                              Ver no Drive ↗
+                                                          </div>
+                                                      </a>
+                                                  ) : (
+                                                      /* OUTROS ARQUIVOS (PDF, DOC, ETC) */
+                                                      <a href={post.file.url} target="_blank" className="flex items-center gap-2 text-xs font-bold hover:underline bg-gray-50 p-2 rounded border mt-2 w-fit">
+                                                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                          </svg>
+                                                          {post.file.name}
+                                                      </a>
+                                                  )}
                                                 </div>
                                             )}
                                         </div>
