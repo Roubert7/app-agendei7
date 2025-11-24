@@ -523,60 +523,72 @@ const NotificationCenterModal = ({ isOpen, onClose, mockDepartments = {} }) => {
          // --- CONEXÃO COM O BACKEND (GOOGLE APPS SCRIPT) ---
 // URL do seu script publicado como aplicativo web.
 
+// --- CONEXÃO COM O BACKEND (ATUALIZADO PARA GOOGLE.SCRIPT.RUN) ---
+
 const api = {
     /**
-     * Função genérica reescrita para usar google.script.run
+     * Função interna que faz a mágica acontecer sem URL.
      */
     _callApi: function(action, payload = {}) {
-        // Retornamos uma Promise para manter a compatibilidade com o 'await' do seu código
         return new Promise((resolve, reject) => {
-            
+            // Verifica se o google.script.run está disponível (produção/dev)
+            if (!window.google || !window.google.script) {
+                console.error("Ambiente Google Apps Script não detectado. Executando localmente?");
+                reject(new Error("Ambiente Google não detectado (google.script.run ausente)."));
+                return;
+            }
+
             google.script.run
                 .withSuccessHandler((response) => {
-                    // O backend respondeu com sucesso técnico
+                    // Se o backend retornar {status: 'error'}, rejeita a promise
                     if (response && response.status === 'error') {
-                        console.error('Erro retornado pela API:', response.message);
+                        console.error('Erro API:', response.message);
                         reject(new Error(response.message));
                     } else {
-                        // Sucesso total, retorna os dados
+                        // Sucesso: retorna apenas os dados (response.data)
                         resolve(response ? response.data : null);
                     }
                 })
                 .withFailureHandler((error) => {
-                    // Falha grave na comunicação (ex: erro de script não tratado)
-                    console.error(`Falha crítica na ação "${action}":`, error);
+                    // Erro crítico de execução do script (timeout, sintaxe, etc)
+                    console.error("Falha crítica no Script:", error);
                     reject(error);
                 })
-                .handleApiRequest({ action: action, payload: payload }); // Chama a função no Backend
+                // Chama a função 'handleApiRequest' que criamos no Backend
+                .handleApiRequest({ action: action, payload: payload });
         });
     },
-    // Funções específicas para cada ação no backend.
-    // Elas usam a função _callApi para fazer o trabalho pesado.
+
+    // --- MÉTODOS DO APP ---
+
     login: function(login, password) {
         return this._callApi('login', { login, password });
     },
 
-    publishMuralPost: function(payload) {
-        // Usa o objeto completo como payload, pois a API espera os dados e o Base64
-        return this._callApi('publishMuralPost', payload);
-    },
-    getMuralFiles: function() {
-        return this._callApi('getMuralFiles');
-    },
-    deleteMuralFile: function(fileId) {
-        return this._callApi('deleteMuralFile', { fileId: fileId }, [fileId]);
-    },
-
+    // AQUI ESTAVA O ERRO DE DADOS: O Dashboard pede 'getInitialData', 
+    // mas vamos garantir que o Backend saiba responder a isso.
     getInitialData: function() {
         return this._callApi('getInitialData');
     },
     
     addEvent: function(eventData, currentUser) {
-        return this._callApi('addEvent', { eventData, currentUser });
+        return this._callApi('addEvent', eventData); // Simplificado payload
     },
 
-    // ... e assim por diante para todas as outras ações (updateEvent, deleteEvent, etc.)
+    // Métodos do Mural (Adicionei para garantir que funcione com o novo painel)
+    getMuralPosts: function() {
+        return this._callApi('getMuralPosts');
+    },
+
+    publishMuralPost: function(postData) {
+        return this._callApi('publishMuralPost', postData);
+    },
+    
+    // Mantenha os outros métodos que você já tinha, usando a mesma lógica...
+    // Exemplo:
+    // updateEvent: function(...) { return this._callApi('updateEvent', ...); }
 };
+
         // --- Componente da Logo (recriada em SVG a partir da imagem do usuário) ---
         const UserAppLogo = ({ className }) => (
             <svg viewBox="0 0 180 180" className={className} xmlns="http://www.w3.org/2000/svg">
