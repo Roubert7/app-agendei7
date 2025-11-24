@@ -13,6 +13,69 @@ const MURAL_SHEET_NAME = "MURAL_POSTAGENS";
  * [NOVO] Função chamada automaticamente pelo google.script.run do Frontend.
  * Não precisa de URL, funciona em /dev e /exec.
  */
+
+function enviarSolicitacaoSenha(dados) {
+  try {
+    const assunto = `🔐 Agendei7: Solicitação de Troca de Senha - ${dados.departamento}`;
+    const corpo = `
+      <h2>Solicitação de Redefinição de Senha</h2>
+      <p>Um usuário solicitou a alteração de senha pelo App.</p>
+      <ul>
+        <li><strong>Departamento:</strong> ${dados.departamento}</li>
+        <li><strong>Responsável:</strong> ${dados.responsavel}</li>
+        <li><strong>E-mail:</strong> ${dados.email}</li>
+        <li><strong>Telefone:</strong> ${dados.telefone}</li>
+        <hr>
+        <li><strong>Nova Senha Desejada:</strong> ${dados.novaSenha}</li>
+      </ul>
+      <p><em>Verifique a veracidade das informações antes de alterar na tabela ACESSOS.</em></p>
+    `;
+
+    MailApp.sendEmail({
+      to: EMAIL_ADMIN,
+      subject: assunto,
+      htmlBody: corpo
+    });
+
+    return "Solicitação enviada ao administrador com sucesso.";
+  } catch (e) {
+    console.error("Erro ao enviar email: " + e.message);
+    throw new Error("Falha ao enviar o e-mail.");
+  }
+}
+
+/**
+ * [ATUALIZADA] Salva a solicitação de NOVO CADASTRO na tabela ACESSOS.
+ * Concatena telefone e obs no campo NOTIFICACAO.
+ */
+function solicitarNovoCadastro(dados) {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("ACESSOS");
+    const lastRow = sheet.getLastRow();
+    const nextId = lastRow; // Simples ID sequencial baseado na linha
+
+    // Colunas: ID, LOGIN, SENHA, DEPTO, RESP, EMAIL, APROVACAO, NOTIFICACAO
+    // Concatenamos Telefone e Infos Gerais na coluna NOTIFICACAO (Coluna H / índice 7)
+    const notificacao = `Tel: ${dados.telefone} | Obs: ${dados.infos}`;
+
+    sheet.appendRow([
+      nextId,
+      dados.login,
+      dados.senha,
+      dados.departamento,
+      dados.nome, // Responsável
+      dados.email,
+      'P',        // Pendente
+      notificacao
+    ]);
+
+    return "Cadastro solicitado com sucesso! Aguarde a aprovação.";
+  } catch (e) {
+    console.error("Erro no cadastro: " + e.message);
+    throw new Error("Erro ao salvar cadastro.");
+  }
+}
+
 function handleApiRequest(data) {
   try {
     // Garante que é um objeto JSON
@@ -362,43 +425,60 @@ function getEventos() {
 
 function verificarAcesso(login, senha) {
   try {
-    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("ACESSOS"); // Nome corrigido para plural conforme imagem
-    if (!sheet) throw new Error("Aba 'ACESSOS' não encontrada.");
+    // IMPORTANTE: O nome da aba na sua imagem é "ACESSOS" (plural)
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("ACESSOS");
     
-    // Pega da linha 2 até a última, colunas A(1) até G(7)
-    // Colunas na Imagem: 
-    // A=ID, B=LOGIN, C=SENHA, D=DEPTO, E=RESP, F=EMAIL, G=APROVACAO
-    const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 7).getValues();
+    if (!sheet) throw new Error("A tabela 'ACESSOS' não foi encontrada na planilha.");
     
-    const loginUser = String(login).trim().toLowerCase();
-    const senhaUser = String(senha).trim();
+    // Pega os dados da linha 2 até a última
+    // Colunas A até G (índices 0 a 6)
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) return { acesso: false, motivo: 'CREDENCIAL_INVALIDA' };
+
+    const data = sheet.getRange(2, 1, lastRow - 1, 7).getValues();
+    
+    // Normaliza o input do usuário (remove espaços e minúsculo para login)
+    const loginInput = String(login).trim().toLowerCase();
+    const senhaInput = String(senha).trim();
 
     for (let i = 0; i < data.length; i++) {
-      // Coluna B (índice 1) = Login
-      // Coluna C (índice 2) = Senha
-      // Coluna G (índice 6) = Aprovacao
+      const row = data[i];
       
-      const dbLogin = String(data[i][1]).trim().toLowerCase();
-      const dbSenha = String(data[i][2]).trim();
-      const dbStatus = String(data[i][6]).trim().toUpperCase();
+      // Mapeamento conforme sua imagem image_46de13.png:
+      // row[0] = AC_ID
+      // row[1] = AC_LOGIN
+      // row[2] = AC_SENHA
+      // row[3] = AC_DEPARTAMENTO
+      // row[4] = AC_RESP
+      // row[5] = AC_EMAIL
+      // row[6] = AC_APROVACAO
 
-      if (dbLogin === loginUser && dbSenha === senhaUser) {
-        if (dbStatus === 'A') {
+      const dbLogin = String(row[1]).trim().toLowerCase();
+      const dbSenha = String(row[2]).trim();
+      const dbAprovacao = String(row[6]).trim().toUpperCase();
+
+      // Verifica credenciais
+      if (dbLogin === loginInput && dbSenha === senhaInput) {
+        // Verifica se está ativo ('A')
+        if (dbAprovacao === 'A') {
           return { 
             acesso: true, 
-            perfil: data[i][3], // Coluna D = Departamento
-            email: data[i][5],  // Coluna F = Email
-            nome: data[i][4]    // Coluna E = Responsável
+            perfil: row[3], // Nome do Departamento
+            responsavel: row[4], // Nome do Responsável
+            email: row[5] // Email
           };
         } else {
           return { acesso: false, motivo: 'STATUS_INVALIDO' };
         }
       }
     }
+    
+    // Se saiu do loop, não achou ninguém
     return { acesso: false, motivo: 'CREDENCIAL_INVALIDA' };
+
   } catch (e) {
-    console.error("Erro Login: " + e.message);
-    throw new Error("Erro ao verificar credenciais: " + e.message);
+    console.error("Erro crítico no login: " + e.message);
+    throw new Error("Erro interno ao verificar credenciais.");
   }
 }
 
