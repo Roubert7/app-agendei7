@@ -118,6 +118,16 @@ function processarAcao(action, payload) {
 
       default:
         return { status: 'error', message: "Ação desconhecida: " + action };
+
+      case 'getInitialData':
+        // Esta função retorna tudo o que o app precisa ao abrir de uma vez
+        return {
+          eventos: getEventos(),         // Retorna lista de eventos
+          departamentos: getDepartamentos(), // Retorna lista de departamentos
+          mural: getMuralPosts(),        // Retorna posts do mural
+          // Adicione aqui outras listas se seu Dashboard precisar
+        };
+
     }
   } catch (e) {
     console.error("Erro em processarAcao [" + action + "]: " + e.message);
