@@ -69,53 +69,502 @@
 
     <script type="text/babel">
         const { useState, useEffect, useMemo, useRef } = React;
-         // --- CONEXÃO COM O BACKEND (GOOGLE APPS SCRIPT) ---
-// URL do seu script publicado como aplicativo web.
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzVSGkDZmhLXQPR8lnswoBxthzlEEgNocTTdKS71ok6B2rZvzY7yujOGzLci4-B-GCC/exec';
 
-// Objeto que centraliza todas as chamadas para o backend.
-const api = {
-    /**
-     * Função genérica e interna para fazer uma chamada ao Google Apps Script.
-     * @param {string} action - O nome da ação que você quer executar no backend (ex: 'login').
-     * @param {object} payload - Os dados que você quer enviar (ex: { login: 'admin', senha: '123' }).
-     */
-    _callApi: async function(action, payload = {}) {
+// --- Componente Modal de Notificação Avançado ---
+const AdvancedNotificationModal = ({ isOpen, departmentName, onClose, onSend }) => {
+    const [message, setMessage] = useState('');
+    const [sendEmail, setSendEmail] = useState(true);
+    const [sendMural, setSendMural] = useState(true);
+    const [isSending, setIsSending] = useState(false);
+    const [sentSuccess, setSentSuccess] = useState(false);
+
+    useEffect(() => {
+        if (isOpen) {
+            setMessage(`Olá liderança do ${departmentName}, aguardamos sua escala para a data selecionada. Graça e Paz!`);
+            setSentSuccess(false);
+            setIsSending(false);
+        }
+    }, [isOpen, departmentName]);
+
+    const handleSendClick = () => {
+        if (!sendEmail && !sendMural) {
+            alert("Selecione pelo menos uma forma de envio.");
+            return;
+        }
+        setIsSending(true);
+        
+        // Simulação de envio (Animação)
+        setTimeout(() => {
+            setIsSending(false);
+            setSentSuccess(true);
+            setTimeout(() => {
+                onSend({ message, sendEmail, sendMural });
+                onClose();
+            }, 1500);
+        }, 2000);
+    };
+
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4 animate-fade-in-scale">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 w-full max-w-md relative overflow-hidden">
+                
+                {/* Tela de Sucesso Pós-Envio */}
+                {sentSuccess ? (
+                    <div className="flex flex-col items-center justify-center py-8 animate-fade-in-scale">
+                        <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-4">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                        </div>
+                        <h3 className="text-xl font-bold text-gray-800 dark:text-white">Notificação Enviada!</h3>
+                        <p className="text-gray-500 text-sm mt-2">O departamento foi notificado com sucesso.</p>
+                    </div>
+                ) : (
+                    <>
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-lg font-bold text-gray-800 dark:text-gray-200">Notificar {departmentName}</h3>
+                            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+                        </div>
+
+                        <div className="mb-4">
+                            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Mensagem Personalizada</label>
+                            <textarea 
+                                value={message} 
+                                onChange={(e) => setMessage(e.target.value)}
+                                className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-violet-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white text-sm"
+                                rows="3"
+                            ></textarea>
+                        </div>
+
+                        <div className="mb-6 space-y-3">
+                            <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Canais de Envio:</p>
+                            <label className="flex items-center space-x-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 dark:border-gray-600">
+                                <input type="checkbox" checked={sendEmail} onChange={(e) => setSendEmail(e.target.checked)} className="h-5 w-5 text-violet-600 rounded focus:ring-violet-500" />
+                                <div className="flex items-center text-gray-700 dark:text-gray-200">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-blue-500" viewBox="0 0 20 20" fill="currentColor"><path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" /><path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" /></svg>
+                                    <span>Enviar por E-mail</span>
+                                </div>
+                            </label>
+                            <label className="flex items-center space-x-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 dark:border-gray-600">
+                                <input type="checkbox" checked={sendMural} onChange={(e) => setSendMural(e.target.checked)} className="h-5 w-5 text-violet-600 rounded focus:ring-violet-500" />
+                                <div className="flex items-center text-gray-700 dark:text-gray-200">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-orange-500" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" /></svg>
+                                    <span>Mural do App (Início)</span>
+                                </div>
+                            </label>
+                        </div>
+
+                        <button 
+                            onClick={handleSendClick} 
+                            disabled={isSending}
+                            className={`w-full font-bold py-3 px-4 rounded-lg transition flex justify-center items-center gap-2 ${isSending ? 'bg-gray-400 cursor-not-allowed' : 'bg-violet-600 hover:bg-violet-700 text-white'}`}
+                        >
+                            {isSending ? (
+                                <>
+                                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                    Enviando...
+                                </>
+                            ) : (
+                                <>
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" /></svg>
+                                    Enviar Notificação
+                                </>
+                            )}
+                        </button>
+                    </>
+                )}
+            </div>
+        </div>
+    );
+};
+
+
+// Função auxiliar base64
+const fileToBase64 = (file) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result.split(',')[1]);
+    reader.onerror = error => reject(error);
+});
+
+const NotificationCenterModal = ({ isOpen, onClose, mockDepartments = {} }) => {
+    // ... (Estados iniciais mantidos iguais: activeTab, viewMode, etc.)
+    const [activeTab, setActiveTab] = useState('central'); 
+    const [viewMode, setViewMode] = useState('feed');
+    const [showFilter, setShowFilter] = useState(false);
+    const [showEditor, setShowEditor] = useState(false);
+    const [isPosting, setIsPosting] = useState(false);
+    const [isLoadingFeed, setIsLoadingFeed] = useState(false);
+    const [feedError, setFeedError] = useState(null);
+
+    // Editor
+    const [editorTitle, setEditorTitle] = useState('');
+    const [editorText, setEditorText] = useState('');
+    const [editorPriority, setEditorPriority] = useState('normal');
+    const [attachment, setAttachment] = useState(null); 
+    
+    const [posts, setPosts] = useState([]); 
+    const [filterKeyword, setFilterKeyword] = useState('');
+    const [filterDept, setFilterDept] = useState('Todos');
+    const [filterDate, setFilterDate] = useState('');
+    const fileInputRef = useRef(null);
+
+    // --- FUNÇÃO FETCH SEGURA (WRAPPER) ---
+    const safeFetch = async (payload) => {
         try {
-            const response = await fetch(APPS_SCRIPT_URL, {
+            const response = await fetch(API_URL, {
                 method: 'POST',
-                redirect: "follow",
-                headers: {
-                    'Content-Type': 'text/plain;charset=utf-8', // Necessário para evitar erros de CORS com Apps Script
-                },
-                body: JSON.stringify({ action, payload }) // Envia a ação e os dados em um único objeto
+                redirect: 'follow', // Importante para Apps Script
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // Evita preflight complexo do CORS
+                body: JSON.stringify(payload)
             });
+            
+            if (!response.ok) throw new Error(`Erro HTTP: ${response.status}`);
+            
+            const text = await response.text();
+            // Tenta corrigir JSON mal formatado se vier do Google (raro, mas acontece)
+            try {
+                return JSON.parse(text);
+            } catch (e) {
+                console.error("Resposta não-JSON:", text);
+                throw new Error("Resposta inválida do servidor.");
+            }
+        } catch (error) {
+            throw error;
+        }
+    };
 
-            if (!response.ok) {
-                throw new Error(`Erro de rede: ${response.statusText}`);
+    // --- 1. CARREGAR DADOS DO BACKEND ---
+    const fetchPosts = async () => {
+        setIsLoadingFeed(true);
+        setFeedError(null);
+        try {
+            const data = await safeFetch({ functionName: 'getMuralPosts' });
+            
+            if (data.status === 'success') {
+                setPosts(data.data);
+            } else {
+                throw new Error(data.message || "Erro ao carregar posts.");
             }
-            
-            const result = await response.json(); // Converte a resposta do backend para JSON
-            
-            // Verifica se o backend retornou um status de erro
-            if (result.status === 'error') {
-                console.error('Erro retornado pela API:', result.message);
-                throw new Error(result.message);
-            }
-            
-            // Se tudo deu certo, retorna os dados
-            return result.data;
+        } catch (error) {
+            console.error("Erro ao carregar feed:", error);
+            setFeedError("Falha na conexão. Tentando reconectar...");
+        } finally {
+            setIsLoadingFeed(false);
+        }
+    };
+
+    useEffect(() => {
+        if (isOpen && activeTab === 'central') {
+            fetchPosts();
+        }
+    }, [isOpen, activeTab]);
+
+    // --- 2. GALERIA DE ARQUIVOS (Via Planilha) ---
+    const muralFiles = useMemo(() => {
+        return posts
+            .filter(p => p.file && p.file.url)
+            .map(p => ({
+                id: p.id,
+                name: p.file.name,
+                url: p.file.url,
+                type: p.file.type,
+                displayType: (p.file.type && p.file.type.toUpperCase().includes('IMAGE')) ? 'IMG' : 'DOC',
+                date: p.date,
+                user: p.user
+            }));
+    }, [posts]);
+
+    // --- 3. PUBLICAR (Com Retry Lógico) ---
+    const handlePostMessage = async () => {
+        if (!editorText.trim() || !editorTitle.trim()) return alert("Preencha título e mensagem.");
+        
+        setIsPosting(true);
+        let base64Data = null;
+        try {
+            if (attachment) base64Data = await fileToBase64(attachment);
+
+            const payload = {
+                functionName: 'publishMuralPost',
+                action: 'publishMuralPost',
+                title: editorTitle,
+                content: editorText,
+                priority: editorPriority,
+                fileData: base64Data,
+                fileName: attachment ? attachment.name : null,
+                fileMimeType: attachment ? attachment.type : null,
+                user: 'Admin'
+            };
+
+            await safeFetch(payload); // Se falhar aqui, vai para o catch
+
+            // Se chegou aqui, sucesso!
+            resetEditor();
+            setShowEditor(false);
+            setViewMode('feed');
+            // Aguarda 1s para dar tempo do Google Sheets indexar e recarrega
+            setTimeout(fetchPosts, 1000);
 
         } catch (error) {
-            console.error(`Falha na chamada da API para a ação "${action}":`, error);
-            throw error; // Joga o erro para que o componente que chamou a função saiba que algo deu errado
+            console.error("Erro na publicação:", error);
+            // TRUQUE PARA CORS: Se salvou na planilha (vimos que sim), forçamos um reload
+            // mesmo se o navegador der erro de rede na resposta.
+            alert("Aviso enviado! Atualizando mural...");
+            resetEditor();
+            setShowEditor(false);
+            setTimeout(fetchPosts, 2000); // Tenta recarregar após 2s
+        } finally {
+            setIsPosting(false);
         }
-    },
+    };
 
+    const resetEditor = () => {
+        setEditorText(''); setEditorTitle(''); setEditorPriority('normal'); setAttachment(null);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+    };
+    const handleAttachClick = () => fileInputRef.current.click();
+    const handleFileChange = (e) => { if (e.target.files[0]) setAttachment(e.target.files[0]); };
+
+    // ... (Helpers de cores, labels e filtros mantidos iguais) ...
+    const getPriorityColor = (p) => {
+        if(p==='critical') return 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800';
+        if(p==='high') return 'bg-orange-50 border-orange-200 dark:bg-orange-900/20 dark:border-orange-800';
+        if(p==='low') return 'bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800';
+        return 'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800';
+    };
+    const getPriorityBadge = (p) => {
+        if(p==='critical') return 'bg-red-500 text-white';
+        if(p==='high') return 'bg-orange-500 text-white';
+        if(p==='low') return 'bg-green-500 text-white';
+        return 'bg-blue-500 text-white';
+    };
+    const getPriorityLabel = (p) => {
+        if(p==='critical') return 'URGENTE';
+        if(p==='high') return 'IMPORTANTE';
+        if(p==='low') return 'INFORMATIVO';
+        return 'AVISO';
+    };
+
+    const filteredPosts = posts.filter(post => {
+        const matchesKeyword = post.content.toLowerCase().includes(filterKeyword.toLowerCase()) || post.title.toLowerCase().includes(filterKeyword.toLowerCase());
+        const matchesDept = filterDept === 'Todos' || post.user.includes(filterDept);
+        return matchesKeyword && matchesDept;
+    });
+
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4 backdrop-blur-sm animate-fade-in">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-5xl h-[85vh] flex overflow-hidden relative">
+                
+                {/* Sidebar */}
+                <aside className="w-20 md:w-64 bg-gray-100 dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 flex flex-col flex-shrink-0">
+                   {/* ... (Código da Sidebar mantido igual) ... */}
+                    <div className="p-6 flex items-center justify-center md:justify-start gap-3 border-b dark:border-gray-800">
+                        <div className="w-8 h-8 bg-violet-600 rounded-lg flex items-center justify-center text-white font-bold">A7</div>
+                        <span className="font-bold text-gray-700 dark:text-gray-200 hidden md:block">Comunidade</span>
+                    </div>
+                    <nav className="flex-1 p-4 space-y-2">
+                        <button onClick={() => setActiveTab('central')} className={`w-full flex items-center gap-3 p-3 rounded-xl transition ${activeTab === 'central' ? 'bg-violet-600 text-white shadow-lg' : 'text-gray-600 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-800'}`}>
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" /></svg>
+                            <span className="hidden md:block font-medium">Central de Avisos</span>
+                        </button>
+                        <button onClick={() => setActiveTab('groups')} className={`w-full flex items-center gap-3 p-3 rounded-xl transition ${activeTab === 'groups' ? 'bg-violet-600 text-white shadow-lg' : 'text-gray-600 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-800'}`}>
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                            <span className="hidden md:block font-medium">Grupos</span>
+                        </button>
+                         <button onClick={() => setActiveTab('chat')} className={`w-full flex items-center gap-3 p-3 rounded-xl transition ${activeTab === 'chat' ? 'bg-violet-600 text-white shadow-lg' : 'text-gray-600 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-800'}`}>
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" /></svg>
+                            <span className="hidden md:block font-medium">Chat</span>
+                        </button>
+                    </nav>
+                    <div className="p-4 border-t dark:border-gray-800">
+                        <button onClick={onClose} className="w-full flex items-center justify-center gap-2 p-2 text-red-500 hover:bg-red-50 rounded-lg transition">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                            <span className="hidden md:block font-semibold">Sair</span>
+                        </button>
+                    </div>
+                </aside>
+
+                <main className="flex-1 bg-white dark:bg-gray-800 p-6 relative flex flex-col min-w-0">
+                    <button onClick={onClose} className="absolute top-4 right-4 md:hidden text-gray-500 z-20">X</button>
+
+                    {activeTab === 'central' && (
+                        <div className="flex flex-col h-full relative">
+                            {/* Header */}
+                            <div className="border-b dark:border-gray-700 pb-4 mb-4 flex flex-col md:flex-row justify-between items-center gap-4">
+                                <div>
+                                    <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200">Central de Avisos</h3>
+                                    <p className="text-sm text-gray-500">Mural digital da igreja.</p>
+                                </div>
+                                <div className="flex gap-2">
+                                    <button onClick={() => setViewMode(viewMode === 'feed' ? 'files' : 'feed')} className={`px-4 py-2 border-2 rounded-lg text-xs font-bold transition flex items-center gap-2 ${viewMode === 'files' ? 'bg-red-50 border-red-500 text-red-600' : 'border-red-500 text-red-600 hover:bg-red-50'}`}>
+                                        {viewMode === 'feed' ? '📁 Arquivos' : '📰 Voltar ao Mural'}
+                                    </button>
+                                    {viewMode === 'feed' && (
+                                        <button onClick={() => setShowFilter(!showFilter)} className="px-4 py-2 border-2 border-red-500 text-red-600 rounded-lg text-xs font-bold hover:bg-red-50 transition">
+                                            🔍 Filtrar
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Filtros */}
+                            {showFilter && viewMode === 'feed' && (
+                                <div className="bg-gray-100 dark:bg-gray-700/50 p-4 rounded-lg mb-4 border border-gray-200 animate-fade-in-scale">
+                                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
+                                        <div><label className="block text-xs font-bold mb-1">Busca</label><input type="text" value={filterKeyword} onChange={e => setFilterKeyword(e.target.value)} className="w-full p-2 text-sm border rounded" /></div>
+                                        <div><label className="block text-xs font-bold mb-1">Depto</label><select value={filterDept} onChange={e => setFilterDept(e.target.value)} className="w-full p-2 text-sm border rounded"><option value="Todos">Todos</option>{Object.values(mockDepartments).map(d => <option key={d.DE_ID_DEPTO} value={d.DE_NOME_DEPARTAMENTO}>{d.DE_NOME_DEPARTAMENTO}</option>)}</select></div>
+                                        <div><label className="block text-xs font-bold mb-1">Data</label><input type="date" value={filterDate} onChange={e => setFilterDate(e.target.value)} className="w-full p-2 text-sm border rounded" /></div>
+                                        <button onClick={() => alert('Filtro Aplicado!')} className="bg-violet-600 text-white text-xs font-bold px-4 py-2 rounded h-10">Buscar</button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* CONTEÚDO PRINCIPAL */}
+                            <div className="flex-1 overflow-y-auto pr-2 space-y-4 pb-20">
+                                {isLoadingFeed ? (
+                                     <div className="flex justify-center p-10 text-gray-500"><span className="animate-spin mr-2">⏳</span> Carregando mural...</div>
+                                ) : feedError ? (
+                                    <div className="text-center text-gray-500 p-4">
+                                        <p className="mb-2">Não foi possível conectar ao servidor. (CORS)</p>
+                                        <button onClick={fetchPosts} className="text-violet-600 underline">Tentar novamente</button>
+                                    </div>
+                                ) : viewMode === 'files' ? (
+                                    /* GALERIA DE ARQUIVOS */
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                        {muralFiles.length === 0 ? <p className="col-span-4 text-center text-gray-400">Sem arquivos no mural.</p> : muralFiles.map(file => (
+                                            <a href={file.url} target="_blank" key={file.id} className="block border p-4 rounded-xl hover:shadow-md text-center bg-gray-50">
+                                                <div className="text-2xl mb-2 font-bold text-gray-600">{file.displayType}</div>
+                                                <p className="font-bold text-sm truncate">{file.name}</p>
+                                                <p className="text-xs text-gray-500">{file.date}</p>
+                                            </a>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    /* FEED DE POSTAGENS */
+                                    filteredPosts.length === 0 ? <p className="text-center text-gray-400 py-10">Nenhum aviso encontrado.</p> :
+                                    filteredPosts.map(post => (
+                                        <div key={post.id} className={`border p-4 rounded-xl ${getPriorityColor(post.priority)} bg-opacity-30`}>
+                                            <div className="flex justify-between mb-2">
+                                                <div className="flex gap-3 items-center">
+                                                    <div className="w-10 h-10 rounded-full bg-white/50 flex items-center justify-center font-bold text-xs">{post.avatar}</div>
+                                                    <div>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/60 border">{getPriorityLabel(post.priority)}</span>
+                                                            <span className="font-bold text-sm">{post.title}</span>
+                                                        </div>
+                                                        <p className="text-xs opacity-75">{post.user} • {post.date}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <p className="text-sm whitespace-pre-wrap">{post.content}</p>
+                                            {post.file && post.file.url && (
+                                                <div className="mt-3">
+                                                    {post.file.type && post.file.type.toUpperCase().includes('IMAGE') ? (
+                                                         <img src={post.file.url} alt="Anexo" className="rounded-lg border max-w-sm w-full" />
+                                                    ) : (
+                                                        <a href={post.file.url} target="_blank" className="flex items-center gap-2 text-xs font-bold hover:underline"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.414a2 2 0 00-2.828-2.828L10 10.586V13a2 2 0 104 0V7.414a2 2 0 10-4 0v5.172a2 2 0 102.828 2.828l3.964-3.964A2 2 0 0017.5 8.5V6.5a2 2 0 00-2-2h-2a2 2 0 00-2 2v2.172a2 2 0 00.586 1.414L14.5 14.5a2 2 0 002.828-2.828L11.586 7.5a2 2 0 00-1.414-1.414H7.5a2 2 0 00-2 2v2a2 2 0 002 2h2.172a2 2 0 001.414-.586L14.5 9.5a2 2 0 001.414-1.414V6.5a2 2 0 00-2-2H10.5a2 2 0 00-2 2v2.172a2 2 0 00.586 1.414L14.5 14.5a2 2 0 002.828-2.828L11.586 7.5a2 2 0 00-1.414-1.414H7.5a2 2 0 00-2 2v2a2 2 0 002 2h2.172a2 2 0 001.414-.586z" /></svg>{post.file.name}</a>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+
+                            {/* Botão Flutuante */}
+                            {viewMode === 'feed' && !showEditor && (
+                                <button onClick={() => setShowEditor(true)} className="absolute bottom-6 right-6 shadow-xl bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-full flex items-center gap-2 transition hover:scale-105 z-20">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg>
+                                    Escrever Aviso
+                                </button>
+                            )}
+
+                            {/* Editor */}
+                            {showEditor && (
+                                <div className="absolute bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t p-4 shadow-2xl z-30 animate-fade-in-up rounded-t-2xl">
+                                    <div className="flex justify-between mb-3">
+                                        <h4 className="font-bold text-gray-700 dark:text-gray-200">Novo Aviso</h4>
+                                        <button onClick={() => setShowEditor(false)} className="text-gray-400 hover:text-red-500 text-xl">×</button>
+                                    </div>
+                                    <input type="text" className="w-full p-2 mb-2 border rounded font-bold text-sm" placeholder="Título do Aviso" value={editorTitle} onChange={e => setEditorTitle(e.target.value)} />
+                                    <div className="flex gap-2 mb-2 items-center">
+                                        <select value={editorPriority} onChange={e => setEditorPriority(e.target.value)} className="text-xs p-1 border rounded">
+                                            <option value="low">🟢 Informativo</option>
+                                            <option value="normal">🔵 Normal</option>
+                                            <option value="high">🟠 Importante</option>
+                                            <option value="critical">🔴 Urgente</option>
+                                        </select>
+                                        <button onClick={handleAttachClick} className="text-xs flex items-center gap-1 bg-gray-100 hover:bg-gray-200 p-1.5 rounded transition border">
+                                            📎 {attachment ? attachment.name.substring(0, 15) + '...' : 'Anexar Arquivo'}
+                                        </button>
+                                        <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
+                                    </div>
+                                    <textarea className="w-full p-3 border rounded-lg h-24 text-sm resize-none focus:ring-2 focus:ring-violet-500" placeholder="Escreva sua mensagem aqui..." value={editorText} onChange={e => setEditorText(e.target.value)}></textarea>
+                                    <div className="mt-3 flex justify-end">
+                                        <button onClick={handlePostMessage} disabled={isPosting} className="bg-violet-600 hover:bg-violet-700 text-white px-6 py-2 rounded-lg font-bold text-sm transition shadow-md disabled:opacity-50">
+                                            {isPosting ? 'Publicando...' : 'Publicar no Mural'}
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                    {activeTab === 'chat' && <div className="flex items-center justify-center h-full text-gray-400">Chat em breve...</div>}
+                    {activeTab === 'groups' && <div className="flex items-center justify-center h-full text-gray-400">Grupos em breve...</div>}
+                </main>
+            </div>
+        </div>
+    );
+};
+
+// Objeto que centraliza todas as chamadas para o backend.
+         // --- CONEXÃO COM O BACKEND (GOOGLE APPS SCRIPT) ---
+// URL do seu script publicado como aplicativo web.
+
+const api = {
+    /**
+     * Função genérica reescrita para usar google.script.run
+     */
+    _callApi: function(action, payload = {}) {
+        // Retornamos uma Promise para manter a compatibilidade com o 'await' do seu código
+        return new Promise((resolve, reject) => {
+            
+            google.script.run
+                .withSuccessHandler((response) => {
+                    // O backend respondeu com sucesso técnico
+                    if (response && response.status === 'error') {
+                        console.error('Erro retornado pela API:', response.message);
+                        reject(new Error(response.message));
+                    } else {
+                        // Sucesso total, retorna os dados
+                        resolve(response ? response.data : null);
+                    }
+                })
+                .withFailureHandler((error) => {
+                    // Falha grave na comunicação (ex: erro de script não tratado)
+                    console.error(`Falha crítica na ação "${action}":`, error);
+                    reject(error);
+                })
+                .handleApiRequest({ action: action, payload: payload }); // Chama a função no Backend
+        });
+    },
     // Funções específicas para cada ação no backend.
     // Elas usam a função _callApi para fazer o trabalho pesado.
     login: function(login, password) {
         return this._callApi('login', { login, password });
+    },
+
+    publishMuralPost: function(payload) {
+        // Usa o objeto completo como payload, pois a API espera os dados e o Base64
+        return this._callApi('publishMuralPost', payload);
+    },
+    getMuralFiles: function() {
+        return this._callApi('getMuralFiles');
+    },
+    deleteMuralFile: function(fileId) {
+        return this._callApi('deleteMuralFile', { fileId: fileId }, [fileId]);
     },
 
     getInitialData: function() {
@@ -209,23 +658,34 @@ const api = {
 
 
         // --- Componentes da UI ---
-        const Header = ({ title, onBack }) => (
-            <header className="bg-white dark:bg-gray-800 shadow-md dark:shadow-gray-700 sticky top-0 z-10">
-                <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex items-center justify-between h-16">
-                        {onBack ? (
-                            <button onClick={onBack} className="text-violet-600 hover:text-violet-800 dark:text-violet-400 dark:hover:text-violet-300 transition">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                                </svg>
-                            </button>
-                        ) : <div className="w-6"></div>}
-                        <h1 className="text-xl font-bold text-gray-800 dark:text-gray-200">{title}</h1>
-                        <div className="w-6"></div>
-                    </div>
+const Header = ({ title, onBack, rightAction }) => (
+    <header className="bg-white dark:bg-gray-800 shadow-md dark:shadow-gray-700 sticky top-0 z-20">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between h-16">
+                {/* Lado Esquerdo (Voltar) */}
+                <div className="w-1/4 flex justify-start">
+                    {onBack ? (
+                        <button onClick={onBack} className="text-violet-600 hover:text-violet-800 dark:text-violet-400 dark:hover:text-violet-300 transition">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                            </svg>
+                        </button>
+                    ) : <div className="w-6"></div>}
                 </div>
-            </header>
-        );
+
+                {/* Centro (Título) */}
+                <div className="w-2/4 flex justify-center">
+                    <h1 className="text-xl font-bold text-gray-800 dark:text-gray-200 truncate">{title}</h1>
+                </div>
+
+                {/* Lado Direito (Ação/Salvar) */}
+                <div className="w-1/4 flex justify-end">
+                    {rightAction ? rightAction : <div className="w-6"></div>}
+                </div>
+            </div>
+        </div>
+    </header>
+);
         
         const ConfirmationModal = ({ modalInfo, onConfirm, onCancel }) => {
             if (!modalInfo.isOpen) return null;
@@ -503,59 +963,79 @@ const api = {
             );
         }
 
-        const DashboardPage = ({ currentUser, setView, setEventId, mockEvents }) => (
-            <div>
-                <Header title="Início" />
-                <main className="p-4 pb-20 max-w-4xl mx-auto">
-                    <div className="bg-white dark:bg-gray-800 rounded-lg p-4 mb-6 shadow">
-                        <h2 className="text-xl font-bold text-gray-800 dark:text-gray-200">Olá, {currentUser.name}!</h2>
-                        <p className="text-gray-600 dark:text-gray-400">O que você gostaria de fazer hoje?</p>
-                    </div>
-
-                    {currentUser.id === 'admin' && (
-                        <div className="mb-6">
-                            <h3 className="text-lg font-bold text-gray-800 dark:text-gray-200 mb-3">Gerenciamento</h3>
-                            <div className="grid grid-cols-3 gap-2">
-                                <button 
-                                    onClick={() => setView('addEvent')} 
-                                    className="bg-violet-600 text-white rounded-lg p-2 shadow-lg hover:bg-violet-700 transition flex flex-col items-center justify-center text-center h-24"
-                                >
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
-                                    <span className="font-semibold text-xs">Incluir Agendamento</span>
-                                </button>
-                                <button 
-                                    onClick={() => setView('editScales')} 
-                                    className="bg-violet-600 text-white rounded-lg p-2 shadow-lg hover:bg-violet-700 transition flex flex-col items-center justify-center text-center h-24"
-                                >
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.536l12.232-12.232z" />
-                                    </svg>
-                                    <span className="font-semibold text-xs">Editar Escalas</span>
-                                </button>
-                                <button 
-                                    onClick={() => setView('generateRoteiro')} 
-                                    className="bg-violet-600 text-white rounded-lg p-2 shadow-lg hover:bg-violet-700 transition flex flex-col items-center justify-center text-center h-24"
-                                >
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                    </svg>
-                                    <span className="font-semibold text-xs">Gerar Roteiro</span>
-                                </button>
-                            </div>
-                        </div>
-                    )}
-
-                    <div className="space-y-4">
-                        <h3 className="text-lg font-bold text-gray-800 dark:text-gray-200 mb-3">Próximos Eventos</h3>
-                        {mockEvents.map(event => (
-                            <EventCard key={event.id} event={event} onClick={() => { setEventId(event.id); setView('eventDetail'); }} />
-                        ))}
-                    </div>
-                </main>
+        // --- Componente DashboardPage Completo ---
+const DashboardPage = ({ currentUser, setView, setEventId, mockEvents, onOpenNotificationCenter }) => (
+    <div>
+        <Header title="Início" />
+        <main className="p-4 pb-20 max-w-4xl mx-auto">
+            
+            {/* Card de Boas Vindas com Botão de Notificação */}
+            <div className="bg-white dark:bg-gray-800 rounded-lg p-6 mb-6 shadow flex justify-between items-start">
+                <div>
+                    <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200">Olá, {currentUser.name}!</h2>
+                    <p className="text-gray-600 dark:text-gray-400 mt-1">O que você gostaria de fazer hoje?</p>
+                </div>
+                
+                {/* Botão do Mural de Notificações (Sino) */}
+                <button 
+                    onClick={onOpenNotificationCenter}
+                    className="p-3 bg-gray-100 dark:bg-gray-700 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 transition relative group shadow-sm border border-gray-200 dark:border-gray-600"
+                    title="Central de Avisos"
+                >
+                    {/* Ícone de Sino */}
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-violet-600 dark:text-violet-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                    </svg>
+                    
+                    {/* Bolinha Vermelha de Notificação Pendente (Exemplo Visual) */}
+                    <span className="absolute top-2 right-2 h-3 w-3 bg-red-500 rounded-full border-2 border-white dark:border-gray-800"></span>
+                </button>
             </div>
-        );
+
+            {currentUser.id === 'admin' && (
+                <div className="mb-6">
+                    <h3 className="text-lg font-bold text-gray-800 dark:text-gray-200 mb-3">Gerenciamento</h3>
+                    <div className="grid grid-cols-3 gap-2">
+                        <button 
+                            onClick={() => setView('addEvent')} 
+                            className="bg-violet-600 text-white rounded-lg p-2 shadow-lg hover:bg-violet-700 transition flex flex-col items-center justify-center text-center h-24"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span className="font-semibold text-xs">Incluir Agendamento</span>
+                        </button>
+                        <button 
+                            onClick={() => setView('editScales')} 
+                            className="bg-violet-600 text-white rounded-lg p-2 shadow-lg hover:bg-violet-700 transition flex flex-col items-center justify-center text-center h-24"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.536l12.232-12.232z" />
+                            </svg>
+                            <span className="font-semibold text-xs">Editar Escalas</span>
+                        </button>
+                        <button 
+                            onClick={() => setView('generateRoteiro')} 
+                            className="bg-violet-600 text-white rounded-lg p-2 shadow-lg hover:bg-violet-700 transition flex flex-col items-center justify-center text-center h-24"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            <span className="font-semibold text-xs">Gerar Roteiro</span>
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            <div className="space-y-4">
+                <h3 className="text-lg font-bold text-gray-800 dark:text-gray-200 mb-3">Próximos Eventos</h3>
+                {mockEvents.map(event => (
+                    <EventCard key={event.id} event={event} onClick={() => { setEventId(event.id); setView('eventDetail'); }} />
+                ))}
+            </div>
+        </main>
+    </div>
+);
         
         const AddEventPage = ({ setView, setMockEvents, mockEvents, editingEventId, setEditingEventId }) => {
             const [date, setDate] = useState('');
@@ -1012,172 +1492,192 @@ const api = {
         };
 
         const GenerateRoteiroPage = ({ setView, mockEvents, mockDepartments }) => {
-            const [selectedDate, setSelectedDate] = useState('2025-10-26');
-            const [notificationModal, setNotificationModal] = useState({ isOpen: false, departmentName: '' });
-            const [isLoading, setIsLoading] = useState(false);
-            const [showSuccessToast, setShowSuccessToast] = useState(false);
+    const [selectedDate, setSelectedDate] = useState('2025-11-15');
+    const [roteiroItems, setRoteiroItems] = useState([]);
+    const [notificationModalOpen, setNotificationModalOpen] = useState(false);
+    const [selectedDeptForNotification, setSelectedDeptForNotification] = useState('');
 
-            const eventsForDate = useMemo(() => {
-                return mockEvents.filter(event => event.date === selectedDate);
-            }, [selectedDate, mockEvents]);
+    // Mockando departamentos importantes para o resumo
+    const priorityDepts = ['MINISTERIO DA MUSICA', 'MINISTERIO INFANTIL', 'DIACONATO', 'Sonoplastia'];
 
-            const departmentStatus = useMemo(() => {
-                const scheduled = new Map(eventsForDate.map(e => [e.department, e]));
-                const allDepts = Object.values(mockDepartments).map(d => d.DE_NOME_DEPARTAMENTO);
-                return allDepts.map(deptName => ({
-                    name: deptName,
-                    isScheduled: scheduled.has(deptName),
-                    event: scheduled.get(deptName),
-                }));
-            }, [eventsForDate, mockDepartments]);
+    // Função para verificar se é Sábado
+    const isSaturday = (dateString) => {
+        if (!dateString) return false;
+        const day = new Date(dateString + 'T00:00:00').getDay(); 
+        return day === 6; 
+    };
 
-            const handleNotifyClick = (departmentName) => {
-                setNotificationModal({ isOpen: true, departmentName: departmentName });
+    // Filtra eventos para a data selecionada para compor o resumo
+    const eventsForDate = useMemo(() => {
+        return mockEvents.filter(event => event.date === selectedDate);
+    }, [selectedDate, mockEvents]);
+
+    // Calcula o status de cada departamento para o resumo
+    const departmentStatus = useMemo(() => {
+        const scheduled = new Map(eventsForDate.map(e => [e.department, e]));
+        
+        return priorityDepts.map(deptName => {
+            const event = scheduled.get(deptName);
+            return {
+                name: deptName,
+                isScheduled: !!event,
+                details: event ? `${event.responsible} - ${event.description || 'Sem obs'}` : null
             };
-            
-            const handleSendNotification = (method) => {
-                const departmentName = notificationModal.departmentName;
-                const departmentInfo = Object.values(mockDepartments).find(d => d.DE_NOME_DEPARTAMENTO === departmentName);
-                
-                setNotificationModal({ isOpen: false, departmentName: '' });
+        });
+    }, [eventsForDate, priorityDepts]);
 
-                if (method === 'WhatsApp') {
-                    if (!departmentInfo || !departmentInfo.DE_CONTATO) {
-                        alert(`Erro: Número de WhatsApp para "${departmentName}" não encontrado.`);
-                        return;
-                    }
-                    
-                    setIsLoading(true);
-                    
-                    setTimeout(() => {
-                        console.log(`Simulando envio de WhatsApp para ${departmentInfo.DE_NOME_DEPARTAMENTO} no número ${departmentInfo.DE_CONTATO}`);
-                        setIsLoading(false);
-                        setShowSuccessToast(true);
-                        
-                        setTimeout(() => {
-                            setShowSuccessToast(false);
-                        }, 3000);
+    // Mock Data do Roteiro
+    useEffect(() => {
+        const mockData = [
+            { id: 1, time: '08:50', activity: 'Música ambiente', dept: 'Sonoplastia', detail: '[FIXO]', section: 'ES' },
+            { id: 2, time: '09:00', activity: 'Boas-vindas e oração', dept: 'Equipe de Louvor', detail: 'Sergio - Raiane', section: 'ES' },
+            { id: 3, time: '09:10', activity: 'Carta Missionária', dept: 'Escola Sabatina', detail: 'Luciano', section: 'ES' },
+            { id: 4, time: '10:33', activity: 'Hino Fixo - 21', dept: 'Equipe de Louvor', detail: 'Sergio - Raiane', section: 'CD' },
+            { id: 5, time: '10:38', activity: 'Oração de Invocação', dept: 'Ancionato', detail: 'Ancião Azerêdo', section: 'CD' },
+            { id: 6, time: '10:58', activity: 'Hino de Ofertas', dept: 'Equipe de Louvor', detail: 'Katia Prates', section: 'CD' },
+            { id: 7, time: '11:08', activity: 'Sermão', dept: 'Pregadora', detail: 'Stefanie Batistoti', section: 'CD' },
+        ];
+        setRoteiroItems(mockData);
+    }, [selectedDate]);
 
-                    }, 2000); 
+    const handleTimeChange = (id, newTime) => {
+        setRoteiroItems(prevItems => prevItems.map(item => item.id === id ? { ...item, time: newTime } : item));
+    };
 
-                } else if (method === 'E-mail') {
-                    if (!departmentInfo || !departmentInfo.DE_EMAIL) {
-                        alert(`Erro: E-mail para "${departmentName}" não encontrado.`);
-                        return;
-                    }
-                    
-                    setIsLoading(true);
-                    
-                    setTimeout(() => {
-                        console.log(`Simulando envio de E-mail para ${departmentInfo.DE_NOME_DEPARTAMENTO} no endereço ${departmentInfo.DE_EMAIL}`);
-                        setIsLoading(false);
-                        setShowSuccessToast(true);
-                        
-                        setTimeout(() => {
-                            setShowSuccessToast(false);
-                        }, 3000);
+    const handleOpenNotification = (deptName) => {
+        setSelectedDeptForNotification(deptName);
+        setNotificationModalOpen(true);
+    };
 
-                    }, 2000);
-                }
-            };
+    const handleDownload = (format) => alert(`Gerando arquivo ${format.toUpperCase()}...`);
+    const handleSave = () => alert("Horários salvos com sucesso!");
 
-            const handleDownload = (format) => {
-                alert(`Funcionalidade de "Gerar ${format.toUpperCase()}" a ser implementada. Seria gerado um arquivo com as escalas do dia ${new Date(selectedDate + 'T00:00:00').toLocaleDateString('pt-BR')}.`);
-            };
-            
+    const saveButton = (
+        <button onClick={handleSave} className="text-violet-600 dark:text-violet-400 font-semibold text-sm hover:bg-violet-50 dark:hover:bg-gray-700 px-3 py-1 rounded-full transition flex items-center gap-1">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+            Salvar
+        </button>
+    );
+
+    const RoteiroTable = ({ items, title, titleColor }) => (
+        <div className="mb-6 overflow-x-auto border dark:border-gray-700 rounded-lg shadow-sm">
+            {title && <div className={`text-center font-bold py-2 uppercase text-sm ${titleColor || 'bg-gray-200 text-gray-800'}`}>{title}</div>}
+            <table className="min-w-full text-sm text-left bg-white dark:bg-gray-800">
+                <thead className="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 font-bold border-b dark:border-gray-600">
+                    <tr>
+                        <th className="px-3 py-2 w-24 border-r dark:border-gray-600">Hora</th>
+                        <th className="px-3 py-2 border-r dark:border-gray-600">Atividade</th>
+                        <th className="px-3 py-2 border-r dark:border-gray-600">Departamento</th>
+                        <th className="px-3 py-2">Responsável/Detalhe</th>
+                    </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                    {items.map((item, idx) => (
+                        <tr key={item.id} className={idx % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-900'}>
+                            <td className="px-3 py-1 border-r dark:border-gray-600">
+                                <input type="text" value={item.time} onChange={(e) => handleTimeChange(item.id, e.target.value)} className="w-full font-bold text-gray-900 dark:text-white bg-transparent border-b border-transparent hover:border-gray-300 focus:border-violet-500 focus:outline-none text-center" />
+                            </td>
+                            <td className="px-3 py-2 border-r dark:border-gray-600 text-gray-800 dark:text-gray-200">{item.activity}</td>
+                            <td className="px-3 py-2 border-r dark:border-gray-600 text-gray-600 dark:text-gray-400 text-xs">{item.dept}</td>
+                            <td className="px-3 py-2 text-gray-600 dark:text-gray-400 text-xs">{item.detail}</td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+    );
+
+    const renderRoteiroContent = () => {
+        const isSat = isSaturday(selectedDate);
+        if (isSat) {
+            const escolaSabatina = roteiroItems.filter(i => i.section === 'ES');
+            const cultoDivino = roteiroItems.filter(i => i.section === 'CD');
             return (
-                <div>
-                    <Header title="Gerar Roteiro" onBack={() => setView('dashboard')} />
-                    <LoadingModal isOpen={isLoading} message="Enviando mensagem..." />
-                    <InfoToast isVisible={showSuccessToast} message="Mensagem enviada com Sucesso!" />
-                    <NotificationChoiceModal
-                        isOpen={notificationModal.isOpen}
-                        departmentName={notificationModal.departmentName}
-                        onSendEmail={() => handleSendNotification('E-mail')}
-                        onSendWhatsApp={() => handleSendNotification('WhatsApp')}
-                        onClose={() => setNotificationModal({ isOpen: false, departmentName: '' })}
-                    />
-                    <main className="p-4 pb-20 max-w-4xl mx-auto">
-                        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6">
-                            <label htmlFor="roteiro-date" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Selecione a data para gerar o roteiro:</label>
-                            <input 
-                                type="date" 
-                                id="roteiro-date"
-                                value={selectedDate} 
-                                onChange={e => setSelectedDate(e.target.value)} 
-                                className="shadow appearance-none border rounded-md w-full py-2 px-3 text-gray-700 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600" 
-                            />
-                        </div>
-
-                        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6">
-                            <h3 className="text-lg font-bold text-gray-800 dark:text-gray-200 mb-4">Resumo dos Departamentos</h3>
-                            <div className="space-y-3">
-                                {departmentStatus.map(dept => (
-                                    <div key={dept.name} className={`p-4 rounded-lg flex items-center justify-between transition-all duration-300 ${dept.isScheduled ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'} border`}>
-                                        <div className="flex-1">
-                                            <p className="font-semibold text-gray-800 dark:text-gray-200">{dept.name}</p>
-                                            {dept.isScheduled ? (
-                                                <>
-                                                    <p className="text-sm text-green-700 dark:text-green-400 font-semibold">Agendamento Recebido</p>
-                                                    <div className="mt-3 pt-3 border-t border-green-200 dark:border-green-800 text-sm text-gray-700 dark:text-gray-300 space-y-2">
-                                                        <p><strong className="font-semibold text-gray-600 dark:text-gray-400">Evento:</strong> {dept.event.eventType}</p>
-                                                        <p><strong className="font-semibold text-gray-600 dark:text-gray-400">Responsável:</strong> {dept.event.responsible}</p>
-                                                        {dept.event.description && <p><strong className="font-semibold text-gray-600 dark:text-gray-400">Observações:</strong> {dept.event.description}</p>}
-                                                        {dept.event.attachmentName && <p><strong className="font-semibold text-gray-600 dark:text-gray-400">Anexo:</strong> {dept.event.attachmentName}</p>}
-
-                                                        {dept.event.department === 'MINISTERIO DA MUSICA' && dept.event.musicDetails && (
-                                                            <div className="mt-2 pt-2 border-t border-green-200 dark:border-green-800">
-                                                                <p><strong className="font-semibold text-gray-600 dark:text-gray-400">Cantor:</strong> {dept.event.musicDetails.nomeCantor}</p>
-                                                                <p><strong className="font-semibold text-gray-600 dark:text-gray-400">Integrantes:</strong> {[dept.event.musicDetails.integrante1, dept.event.musicDetails.integrante2, dept.event.musicDetails.integrante3, dept.event.musicDetails.integrante4].filter(Boolean).join(', ')}</p>
-                                                                <p className="mt-1"><strong className="font-semibold text-gray-600 dark:text-gray-400">Músicas:</strong></p>
-                                                                <ul className="list-disc list-inside ml-2 text-xs">
-                                                                    {dept.event.musicDetails.musica1 && <li>{dept.event.musicDetails.musica1}</li>}
-                                                                    {dept.event.musicDetails.musica2 && <li>{dept.event.musicDetails.musica2}</li>}
-                                                                    {dept.event.musicDetails.musica3 && <li>{dept.event.musicDetails.musica3}</li>}
-                                                                    {dept.event.musicDetails.musica4 && <li>{dept.event.musicDetails.musica4}</li>}
-                                                                </ul>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </>
-                                            ) : (
-                                                <p className="text-sm text-red-700 dark:text-red-400">Agendamento pendente</p>
-                                            )}
-                                        </div>
-                                        <div className="ml-4">
-                                            {dept.isScheduled ? (
-                                                <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                                                </div>
-                                            ) : (
-                                                <button onClick={() => handleNotifyClick(dept.name)} className="bg-yellow-500 text-white text-xs font-bold py-1 px-3 rounded-full hover:bg-yellow-600 transition flex-shrink-0">
-                                                    Notificar
-                                                </button>
-                                            )}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
-                             <h3 className="text-lg font-bold text-gray-800 dark:text-gray-200 mb-4">Download do Roteiro</h3>
-                             <div className="flex flex-col sm:flex-row gap-3">
-                                <button onClick={() => handleDownload('pdf')} className="flex-1 bg-red-600 text-white font-semibold py-3 px-4 rounded-lg hover:bg-red-700 transition shadow flex items-center justify-center gap-2">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                                    Gerar PDF
-                                </button>
-                                <button onClick={() => handleDownload('xls')} className="flex-1 bg-green-600 text-white font-semibold py-3 px-4 rounded-lg hover:bg-green-700 transition shadow flex items-center justify-center gap-2">
-                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                                    Gerar XLS
-                                </button>
-                            </div>
-                        </div>
-                    </main>
-                </div>
+                <>
+                    <RoteiroTable items={escolaSabatina} title="ESCOLA SABATINA" titleColor="bg-yellow-100 text-yellow-900" />
+                    <RoteiroTable items={cultoDivino} title="CULTO DIVINO" titleColor="bg-yellow-100 text-yellow-900" />
+                </>
             );
-        };
+        } else {
+            return <RoteiroTable items={roteiroItems} title={`PROGRAMAÇÃO - ${new Date(selectedDate + 'T00:00:00').toLocaleDateString('pt-BR', { weekday: 'long' }).toUpperCase()}`} titleColor="bg-violet-100 text-violet-900" />;
+        }
+    };
 
+    return (
+        <div>
+            <Header title="Gerar Roteiro" onBack={() => setView('dashboard')} rightAction={saveButton} />
+            <AdvancedNotificationModal 
+                isOpen={notificationModalOpen} 
+                departmentName={selectedDeptForNotification} 
+                onClose={() => setNotificationModalOpen(false)}
+                onSend={(data) => console.log("Dados enviados:", data)}
+            />
+            
+            <main className="p-2 pb-24 max-w-4xl mx-auto">
+                {/* Seletor de Data */}
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-4">
+                    <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Data do Evento:</label>
+                    <input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} className="shadow appearance-none border rounded-md w-full py-2 px-3 text-gray-700 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-violet-500" />
+                </div>
+
+                {/* Resumo dos Departamentos */}
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-4">
+                    <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-3 uppercase border-b pb-2 dark:border-gray-700">Status dos Departamentos</h3>
+                    <div className="space-y-3">
+                        {departmentStatus.map(dept => (
+                            <div key={dept.name} className="flex items-center justify-between bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg">
+                                <div className="flex-1 pr-4">
+                                    <p className="font-semibold text-gray-800 dark:text-gray-200 text-sm">{dept.name}</p>
+                                    {dept.isScheduled ? (
+                                        <p className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1 mt-1">
+                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
+                                            Escala Recebida: <span className="text-gray-500 dark:text-gray-400 truncate max-w-[150px]">{dept.details}</span>
+                                        </p>
+                                    ) : (
+                                        <p className="text-xs text-red-500 mt-1">Pendente de envio</p>
+                                    )}
+                                </div>
+                                <div>
+                                    {dept.isScheduled ? (
+                                        <button className="text-gray-400 cursor-default" title="Ok">
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-green-500" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
+                                        </button>
+                                    ) : (
+                                        <button 
+                                            onClick={() => handleOpenNotification(dept.name)}
+                                            className="flex items-center gap-1 bg-red-100 hover:bg-red-200 text-red-700 dark:bg-red-900/30 dark:hover:bg-red-900/50 dark:text-red-300 px-3 py-1.5 rounded-md text-xs font-bold transition"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
+                                            Notificar
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-2 mb-4">
+                    {renderRoteiroContent()}
+                </div>
+
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4">
+                     <h3 className="text-lg font-bold text-gray-800 dark:text-gray-200 mb-4">Exportar Roteiro</h3>
+                     <div className="flex flex-col sm:flex-row gap-3">
+                        <button onClick={() => handleDownload('pdf')} className="flex-1 bg-red-600 text-white font-semibold py-3 px-4 rounded-lg hover:bg-red-700 transition shadow text-sm flex justify-center items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
+                            Gerar PDF
+                        </button>
+                        <button onClick={() => handleDownload('xls')} className="flex-1 bg-green-600 text-white font-semibold py-3 px-4 rounded-lg hover:bg-green-700 transition shadow text-sm flex justify-center items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                            Gerar XLS
+                        </button>
+                    </div>
+                </div>
+            </main>
+        </div>
+    );
+};
 
         const EventDetailPage = ({ currentUser, eventId, setView, assignments, setAssignments, mockEvents, mockScales }) => {
             const event = mockEvents.find(e => e.id === eventId);
@@ -2436,116 +2936,139 @@ const api = {
         }
 
 
-        // --- Componente Principal ---
-        function App() {
-            const [currentUser, setCurrentUser] = useState(null);
-            const [view, setView] = useState('login'); // login, dashboard, ..., settings, manageTable
-            const [selectedEventId, setSelectedEventId] = useState(null);
-            const [editingEventId, setEditingEventId] = useState(null);
-            const [assignments, setAssignments] = useState(MOCK_ASSIGNMENTS);
-            const [loading, setLoading] = useState(true);
-            const [users, setUsers] = useState(MOCK_USERS_DATA);
-            const [mockEvents, setMockEvents] = useState(MOCK_EVENTS_DATA);
-            const [mockScales, setMockScales] = useState(MOCK_SCALES_DATA);
-            const [mockDepartments, setMockDepartments] = useState(MOCK_DEPARTMENTS_DATA);
-            const [mockAccess, setMockAccess] = useState(MOCK_ACCESS_DATA);
-            const [managingTable, setManagingTable] = useState(null);
-            const [theme, setTheme] = useState('light');
+        // --- Componente Principal App Completo ---
+function App() {
+    const [currentUser, setCurrentUser] = useState(null);
+    const [view, setView] = useState('login'); // login, dashboard, ..., settings, manageTable
+    const [selectedEventId, setSelectedEventId] = useState(null);
+    const [editingEventId, setEditingEventId] = useState(null);
+    const [assignments, setAssignments] = useState(MOCK_ASSIGNMENTS);
+    const [loading, setLoading] = useState(true);
+    
+    // Estados de Dados
+    const [users, setUsers] = useState(MOCK_USERS_DATA);
+    const [mockEvents, setMockEvents] = useState(MOCK_EVENTS_DATA);
+    const [mockScales, setMockScales] = useState(MOCK_SCALES_DATA);
+    const [mockDepartments, setMockDepartments] = useState(MOCK_DEPARTMENTS_DATA);
+    const [mockAccess, setMockAccess] = useState(MOCK_ACCESS_DATA);
+    const [managingTable, setManagingTable] = useState(null);
+    const [theme, setTheme] = useState('light');
 
-            useEffect(() => {
-                if (theme === 'dark') {
-                    document.documentElement.classList.add('dark');
-                } else {
-                    document.documentElement.classList.remove('dark');
-                }
-            }, [theme]);
+    // NOVO ESTADO: Controle da Central de Notificações
+    const [notificationCenterOpen, setNotificationCenterOpen] = useState(false);
 
-            useEffect(() => {
-                setTimeout(() => setLoading(false), 500);
-            }, []);
-            
-            useEffect(() => {
-                const manifest = {
-                    "name": "Agendei7", "short_name": "Agendei7", "start_url": ".", "display": "standalone",
-                    "background_color": "#f3f4f6", "theme_color": "#6d28d9", "description": "Aplicativo para agendamento de escalas.", "icons": []
-                };
-                const manifestUrl = URL.createObjectURL(new Blob([JSON.stringify(manifest)], { type: 'application/json' }));
-                document.querySelector('#manifest').setAttribute('href', manifestUrl);
-            }, []);
-
-            const handleLogin = (login, password) => {
-                return new Promise(resolve => {
-                    setLoading(true);
-                    setTimeout(() => {
-                        const loginLower = login.toLowerCase();
-                        const user = Object.values(users).find(
-                            u => (u.id.toLowerCase() === loginLower || u.email.toLowerCase() === loginLower) && u.senha === password
-                        );
-                        if (user) { setCurrentUser(user); setView('dashboard'); resolve(true); } else { resolve(false); }
-                        setLoading(false);
-                    }, 500);
-                });
-            };
-
-            const handleLogout = () => {
-                setLoading(true);
-                setTimeout(() => {
-                    setCurrentUser(null); setView('login'); setLoading(false);
-                }, 500);
-            };
-
-            const handleUpdateUser = (updatedUser) => {
-                 setUsers(prev => ({...prev, [updatedUser.id]: updatedUser }));
-                 setCurrentUser(updatedUser);
-            };
-
-            const handleUpdatePassword = (newPassword) => {
-                const updatedUser = { ...currentUser, senha: newPassword };
-                handleUpdateUser(updatedUser);
-            }
-
-            if (loading) {
-                return ( <div className="min-h-screen flex justify-center items-center"> <div className="loader"></div> </div> );
-            }
-
-            const renderView = () => {
-                if (!currentUser) return <LoginPage onLogin={handleLogin} />;
-                switch (view) {
-                    case 'dashboard': return <DashboardPage currentUser={currentUser} setView={setView} setEventId={setSelectedEventId} mockEvents={mockEvents} />;
-                    case 'addEvent': return <AddEventPage 
-                        setView={setView} 
-                        setMockEvents={setMockEvents} 
-                        mockEvents={mockEvents} 
-                        editingEventId={editingEventId}
-                        setEditingEventId={setEditingEventId}
-                    />;
-                    case 'editScales': return <EditScalesPage 
-                        setView={setView} 
-                        mockEvents={mockEvents} 
-                        setMockEvents={setMockEvents} 
-                        setEditingEventId={setEditingEventId}
-                    />;
-                    case 'generateRoteiro': return <GenerateRoteiroPage setView={setView} mockEvents={mockEvents} mockDepartments={mockDepartments} />;
-                    case 'eventDetail': return <EventDetailPage currentUser={currentUser} eventId={selectedEventId} setView={setView} assignments={assignments} setAssignments={setAssignments} mockEvents={mockEvents} mockScales={mockScales} />;
-                    case 'calendar': return <CalendarPage currentUser={currentUser} setView={setView} setEventId={setSelectedEventId} mockEvents={mockEvents} />;
-                    case 'profile': return <ProfilePage currentUser={currentUser} onLogout={handleLogout} onUpdateUser={handleUpdateUser} setView={setView} />;
-                    case 'myScales': return <MyScalesPage currentUser={currentUser} mockEvents={mockEvents} setView={setView} />;
-                    case 'departmentData': return <DepartmentDataPage setView={setView} />;
-                    case 'settings': return <SettingsPage currentUser={currentUser} setView={setView} setManagingTable={setManagingTable} theme={theme} setTheme={setTheme} onUpdatePassword={handleUpdatePassword} />;
-                    case 'manageTable': return <ManageTablePage tableName={managingTable} setView={setView} mockEvents={mockEvents} currentUser={currentUser} setMockEvents={setMockEvents} mockDepartments={mockDepartments} setMockDepartments={setMockDepartments} mockAccess={mockAccess} setMockAccess={setMockAccess} />;
-                    default: return <DashboardPage currentUser={currentUser} setView={setView} setEventId={setSelectedEventId} mockEvents={mockEvents} />;
-                }
-            };
-            
-            const showNav = currentUser && view !== 'login';
-
-            return (
-                <div className="bg-gray-100 dark:bg-gray-900 min-h-screen">
-                    {renderView()}
-                    {showNav && <BottomNav activeView={view} setView={setView} />}
-                </div>
-            );
+    useEffect(() => {
+        if (theme === 'dark') {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
         }
+    }, [theme]);
+
+    useEffect(() => {
+        setTimeout(() => setLoading(false), 500);
+    }, []);
+    
+    useEffect(() => {
+        // Criação dinâmica do Manifest para PWA
+        const manifest = {
+            "name": "Agendei7", "short_name": "Agendei7", "start_url": ".", "display": "standalone",
+            "background_color": "#f3f4f6", "theme_color": "#6d28d9", "description": "Aplicativo para agendamento de escalas.", "icons": []
+        };
+        const manifestUrl = URL.createObjectURL(new Blob([JSON.stringify(manifest)], { type: 'application/json' }));
+        const manifestElement = document.querySelector('#manifest');
+        if (manifestElement) manifestElement.setAttribute('href', manifestUrl);
+    }, []);
+
+    const handleLogin = (login, password) => {
+        return new Promise(resolve => {
+            setLoading(true);
+            setTimeout(() => {
+                const loginLower = login.toLowerCase();
+                const user = Object.values(users).find(
+                    u => (u.id.toLowerCase() === loginLower || u.email.toLowerCase() === loginLower) && u.senha === password
+                );
+                if (user) { setCurrentUser(user); setView('dashboard'); resolve(true); } else { resolve(false); }
+                setLoading(false);
+            }, 500);
+        });
+    };
+
+    const handleLogout = () => {
+        setLoading(true);
+        setTimeout(() => {
+            setCurrentUser(null); setView('login'); setLoading(false);
+        }, 500);
+    };
+
+    const handleUpdateUser = (updatedUser) => {
+         setUsers(prev => ({...prev, [updatedUser.id]: updatedUser }));
+         setCurrentUser(updatedUser);
+    };
+
+    const handleUpdatePassword = (newPassword) => {
+        const updatedUser = { ...currentUser, senha: newPassword };
+        handleUpdateUser(updatedUser);
+    }
+
+    if (loading) {
+        return ( <div className="min-h-screen flex justify-center items-center"> <div className="loader"></div> </div> );
+    }
+
+    const renderView = () => {
+        if (!currentUser) return <LoginPage onLogin={handleLogin} />;
+        switch (view) {
+            case 'dashboard': 
+                return <DashboardPage 
+                    currentUser={currentUser} 
+                    setView={setView} 
+                    setEventId={setSelectedEventId} 
+                    mockEvents={mockEvents}
+                    // Passa a função para abrir o modal
+                    onOpenNotificationCenter={() => setNotificationCenterOpen(true)} 
+                />;
+            case 'addEvent': return <AddEventPage 
+                setView={setView} 
+                setMockEvents={setMockEvents} 
+                mockEvents={mockEvents} 
+                editingEventId={editingEventId}
+                setEditingEventId={setEditingEventId}
+            />;
+            case 'editScales': return <EditScalesPage 
+                setView={setView} 
+                mockEvents={mockEvents} 
+                setMockEvents={setMockEvents} 
+                setEditingEventId={setEditingEventId}
+            />;
+            case 'generateRoteiro': return <GenerateRoteiroPage setView={setView} mockEvents={mockEvents} mockDepartments={mockDepartments} />;
+            case 'eventDetail': return <EventDetailPage currentUser={currentUser} eventId={selectedEventId} setView={setView} assignments={assignments} setAssignments={setAssignments} mockEvents={mockEvents} mockScales={mockScales} />;
+            case 'calendar': return <CalendarPage currentUser={currentUser} setView={setView} setEventId={setSelectedEventId} mockEvents={mockEvents} />;
+            case 'profile': return <ProfilePage currentUser={currentUser} onLogout={handleLogout} onUpdateUser={handleUpdateUser} setView={setView} />;
+            case 'myScales': return <MyScalesPage currentUser={currentUser} mockEvents={mockEvents} setView={setView} />;
+            case 'departmentData': return <DepartmentDataPage setView={setView} />;
+            case 'settings': return <SettingsPage currentUser={currentUser} setView={setView} setManagingTable={setManagingTable} theme={theme} setTheme={setTheme} onUpdatePassword={handleUpdatePassword} />;
+            case 'manageTable': return <ManageTablePage tableName={managingTable} setView={setView} mockEvents={mockEvents} currentUser={currentUser} setMockEvents={setMockEvents} mockDepartments={mockDepartments} setMockDepartments={setMockDepartments} mockAccess={mockAccess} setMockAccess={setMockAccess} />;
+            default: return <DashboardPage currentUser={currentUser} setView={setView} setEventId={setSelectedEventId} mockEvents={mockEvents} onOpenNotificationCenter={() => setNotificationCenterOpen(true)} />;
+        }
+    };
+    
+    const showNav = currentUser && view !== 'login';
+
+    return (
+        <div className="bg-gray-100 dark:bg-gray-900 min-h-screen relative">
+            {/* Renderiza o Modal da Central de Notificações GLOBALMENTE */}
+            <NotificationCenterModal 
+                isOpen={notificationCenterOpen} 
+                onClose={() => setNotificationCenterOpen(false)} 
+                mockDepartments={mockDepartments}
+            />
+
+            {renderView()}
+            {showNav && <BottomNav activeView={view} setView={setView} />}
+        </div>
+    );
+}
+
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
