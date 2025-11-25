@@ -1140,33 +1140,28 @@ const LoginPage = ({ onLogin, initialDepartments = [] }) => {
         };
 
         // --- Componente DashboardPage Completo ---
-const DashboardPage = ({ currentUser, setView, setEventId, mockEvents, onOpenNotificationCenter }) => (
+const DashboardPage = ({ currentUser, setView, setEventId, mockEvents, onOpenNotifications }) => (
     <div>
-        <Header title="Início" />
-        <main className="p-4 pb-20 max-w-4xl mx-auto">
-            
-            {/* Card de Boas Vindas com Botão de Notificação */}
-            <div className="bg-white dark:bg-gray-800 rounded-lg p-6 mb-6 shadow flex justify-between items-start">
-                <div>
-                    <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200">Olá, {currentUser.name}!</h2>
-                    <p className="text-gray-600 dark:text-gray-400 mt-1">O que você gostaria de fazer hoje?</p>
-                </div>
-                
-                {/* Botão do Mural de Notificações (Sino) */}
-                <button 
-                    onClick={onOpenNotificationCenter}
-                    className="p-3 bg-gray-100 dark:bg-gray-700 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 transition relative group shadow-sm border border-gray-200 dark:border-gray-600"
-                    title="Central de Avisos"
-                >
-                    {/* Ícone de Sino */}
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-violet-600 dark:text-violet-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                    </svg>
+        <header className="bg-white dark:bg-gray-800 shadow-md dark:shadow-gray-700 sticky top-0 z-10">
+            <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="flex items-center justify-between h-16">
+                    <div className="w-6"></div>
+                    <h1 className="text-xl font-bold text-gray-800 dark:text-gray-200">Início</h1>
                     
-                    {/* Bolinha Vermelha de Notificação Pendente (Exemplo Visual) */}
-                    <span className="absolute top-2 right-2 h-3 w-3 bg-red-500 rounded-full border-2 border-white dark:border-gray-800"></span>
-                </button>
+                    {/* 2. Atualize o botão do Sino para usar a função */}
+                    <button 
+                        onClick={onOpenNotifications} 
+                        className="p-2 rounded-full text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700 transition relative"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                        </svg>
+                        {/* Bolinha vermelha de notificação (opcional) */}
+                        <span className="absolute top-2 right-2 block h-2 w-2 rounded-full bg-red-500 ring-2 ring-white dark:ring-gray-800"></span>
+                    </button>
+                </div>
             </div>
+        </header>
 
             {currentUser.id === 'admin' && (
                 <div className="mb-6">
@@ -1951,7 +1946,16 @@ const DashboardPage = ({ currentUser, setView, setEventId, mockEvents, onOpenNot
             
             if (!event) return <div className="p-4">Evento não encontrado.</div>;
             
-            const eventDate = new Date(event.date + 'T00:00:00');
+            const parseDateSafe = (dateStr) => {
+    if (!dateStr) return new Date();
+    if (dateStr.includes('/')) {
+        const [dia, mes, ano] = dateStr.split('/');
+        return new Date(`${ano}-${mes}-${dia}T00:00:00`);
+    }
+    return new Date(dateStr + 'T00:00:00');
+};
+
+const eventDate = parseDateSafe(event.date);
 
             return (
                 <div>
@@ -3113,45 +3117,57 @@ const DashboardPage = ({ currentUser, setView, setEventId, mockEvents, onOpenNot
 
 
         // --- Componente Principal App Completo ---
-function App() {
+// --- Componente Principal ---
+        function App() {
+            // --- ESTADOS DE USUÁRIO E NAVEGAÇÃO ---
             const [currentUser, setCurrentUser] = useState(null);
             const [view, setView] = useState('login'); 
             const [selectedEventId, setSelectedEventId] = useState(null);
             const [editingEventId, setEditingEventId] = useState(null);
-            const [assignments, setAssignments] = useState(MOCK_ASSIGNMENTS);
             const [loading, setLoading] = useState(true);
             
-            // Estados de dados (inicializados vazios)
-            const [mockEvents, setMockEvents] = useState([]);
-            const [mockScales, setMockScales] = useState([]);
+            // --- ESTADOS DE DADOS (BACKEND) ---
+            const [mockEvents, setMockEvents] = useState([]); // Eventos vindos da planilha
+            // Mantemos os estáticos como fallback ou inicialização se necessário, mas idealmente viriam do back
+            const [mockScales, setMockScales] = useState(MOCK_SCALES_DATA); 
+            const [assignments, setAssignments] = useState(MOCK_ASSIGNMENTS);
             const [mockDepartments, setMockDepartments] = useState({});
             const [mockAccess, setMockAccess] = useState({});
             
+            // --- ESTADOS DE INTERFACE ---
             const [managingTable, setManagingTable] = useState(null);
             const [theme, setTheme] = useState('light');
+            const [showNotifications, setShowNotifications] = useState(false); // <--- NOVO: Controle do Modal de Avisos
 
-            // Efeito para carregar tema
+            // --- EFEITOS (SIDE EFFECTS) ---
+
+            // 1. Gerenciamento de Tema (Dark Mode)
             useEffect(() => {
-                if (theme === 'dark') document.documentElement.classList.add('dark');
-                else document.documentElement.classList.remove('dark');
+                if (theme === 'dark') {
+                    document.documentElement.classList.add('dark');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                }
             }, [theme]);
 
-            // Efeito Inicial: Carrega dados do Backend
+            // 2. Carregamento Inicial de Dados (Ao abrir o App)
             useEffect(() => {
                 const loadData = async () => {
                     try {
-                        // Chama a API que criamos (getInitialData)
+                        // Chama a função unificada do Backend
                         const data = await api.getInitialData();
                         
                         if (data) {
                             if (data.eventos) setMockEvents(data.eventos);
+                            
                             if (data.departamentos) {
-                                // Transforma array em objeto se necessário, ou usa direto
+                                // Converte array de strings em objeto para fácil acesso
                                 const deptsObj = {};
                                 data.departamentos.forEach(d => deptsObj[d] = { DE_NOME_DEPARTAMENTO: d });
                                 setMockDepartments(deptsObj);
                             }
-                            // Se tiver usuário na sessão (reload), restaura
+                            
+                            // Se o backend devolver sessão ativa (opcional futuro), restaura login
                             if (data.currentUser && data.currentUser.id !== 'guest') {
                                 setCurrentUser(data.currentUser);
                                 setView('dashboard');
@@ -3160,26 +3176,26 @@ function App() {
                     } catch (error) {
                         console.error("Erro ao carregar dados iniciais:", error);
                     } finally {
-                        setLoading(false);
+                        setLoading(false); // Libera a tela de loading
                     }
                 };
                 loadData();
             }, []);
             
-            // Configura o Manifesto PWA
+            // 3. Configuração do Manifesto PWA (Ícone na home do celular)
             useEffect(() => {
                 const manifest = {
                     "name": "Agendei7", "short_name": "Agendei7", "start_url": ".", "display": "standalone",
-                    "background_color": "#f3f4f6", "theme_color": "#6d28d9", "description": "App Agendei7", "icons": []
+                    "background_color": "#f3f4f6", "theme_color": "#6d28d9", "description": "Aplicativo para agendamento de escalas da igreja.", "icons": []
                 };
                 const blob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
                 const manifestUrl = URL.createObjectURL(blob);
                 document.querySelector('#manifest').setAttribute('href', manifestUrl);
             }, []);
 
-            // --- FUNÇÃO DE LOGIN CORRIGIDA (SEM '});' SOBRANDO) ---
+            // --- HANDLERS (FUNÇÕES DE AÇÃO) ---
+
             const handleLogin = (userData) => {
-                // Recebe o usuário já validado do componente LoginPage
                 setCurrentUser(userData);
                 setView('dashboard');
             };
@@ -3198,37 +3214,132 @@ function App() {
             };
 
             const handleUpdatePassword = (newPassword) => {
-                // Lógica futura para salvar senha no backend
-                alert("Funcionalidade de salvar senha será implementada no backend.");
+                alert("A alteração de senha deve ser solicitada ao administrador.");
             }
+
+            // --- RENDERIZAÇÃO ---
 
             if (loading) {
                 return ( <div className="min-h-screen flex justify-center items-center"> <div className="loader"></div> </div> );
             }
 
             const renderView = () => {
-              if (!currentUser) return <LoginPage onLogin={handleLogin} initialDepartments={Object.keys(mockDepartments)} />;                
+                // Se não estiver logado, mostra Login (passando deptos para não travar)
+                if (!currentUser) {
+                    return <LoginPage onLogin={handleLogin} initialDepartments={Object.keys(mockDepartments)} />;
+                }
+                
+                // Roteador de Telas
                 switch (view) {
-                    case 'dashboard': return <DashboardPage currentUser={currentUser} setView={setView} setEventId={setSelectedEventId} mockEvents={mockEvents} />;
-                    case 'addEvent': return <AddEventPage setView={setView} setMockEvents={setMockEvents} mockEvents={mockEvents} editingEventId={editingEventId} setEditingEventId={setEditingEventId} />;
-                    case 'editScales': return <EditScalesPage setView={setView} mockEvents={mockEvents} setMockEvents={setMockEvents} setEditingEventId={setEditingEventId} />;
-                    case 'generateRoteiro': return <GenerateRoteiroPage setView={setView} mockEvents={mockEvents} mockDepartments={mockDepartments} />;
-                    case 'eventDetail': return <EventDetailPage currentUser={currentUser} eventId={selectedEventId} setView={setView} assignments={assignments} setAssignments={setAssignments} mockEvents={mockEvents} mockScales={mockScales} />;
-                    case 'calendar': return <CalendarPage currentUser={currentUser} setView={setView} setEventId={setSelectedEventId} mockEvents={mockEvents} />;
-                    case 'profile': return <ProfilePage currentUser={currentUser} onLogout={handleLogout} onUpdateUser={handleUpdateUser} setView={setView} />;
-                    case 'myScales': return <MyScalesPage currentUser={currentUser} mockEvents={mockEvents} setView={setView} />;
-                    case 'departmentData': return <DepartmentDataPage setView={setView} />;
-                    case 'settings': return <SettingsPage currentUser={currentUser} setView={setView} setManagingTable={setManagingTable} theme={theme} setTheme={setTheme} onUpdatePassword={handleUpdatePassword} />;
-                    case 'manageTable': return <ManageTablePage tableName={managingTable} setView={setView} mockEvents={mockEvents} currentUser={currentUser} setMockEvents={setMockEvents} mockDepartments={mockDepartments} setMockDepartments={setMockDepartments} mockAccess={mockAccess} setMockAccess={setMockAccess} />;
-                    default: return <DashboardPage currentUser={currentUser} setView={setView} setEventId={setSelectedEventId} mockEvents={mockEvents} />;
+                    case 'dashboard': 
+                        return <DashboardPage 
+                            currentUser={currentUser} 
+                            setView={setView} 
+                            setEventId={setSelectedEventId} 
+                            mockEvents={mockEvents} 
+                            // Passa a função que abre o modal ao clicar no sino
+                            onOpenNotifications={() => setShowNotifications(true)} 
+                        />;
+                    case 'addEvent': 
+                        return <AddEventPage 
+                            setView={setView} 
+                            setMockEvents={setMockEvents} 
+                            mockEvents={mockEvents} 
+                            editingEventId={editingEventId} 
+                            setEditingEventId={setEditingEventId} 
+                        />;
+                    case 'editScales': 
+                        return <EditScalesPage 
+                            setView={setView} 
+                            mockEvents={mockEvents} 
+                            setMockEvents={setMockEvents} 
+                            setEditingEventId={setEditingEventId} 
+                        />;
+                    case 'generateRoteiro': 
+                        return <GenerateRoteiroPage 
+                            setView={setView} 
+                            mockEvents={mockEvents} 
+                            mockDepartments={mockDepartments} 
+                        />;
+                    case 'eventDetail': 
+                        return <EventDetailPage 
+                            currentUser={currentUser} 
+                            eventId={selectedEventId} 
+                            setView={setView} 
+                            assignments={assignments} 
+                            setAssignments={setAssignments} 
+                            mockEvents={mockEvents} 
+                            mockScales={mockScales} 
+                        />;
+                    case 'calendar': 
+                        return <CalendarPage 
+                            currentUser={currentUser} 
+                            setView={setView} 
+                            setEventId={setSelectedEventId} 
+                            mockEvents={mockEvents} 
+                        />;
+                    case 'profile': 
+                        return <ProfilePage 
+                            currentUser={currentUser} 
+                            onLogout={handleLogout} 
+                            onUpdateUser={handleUpdateUser} 
+                            setView={setView} 
+                        />;
+                    case 'myScales': 
+                        return <MyScalesPage 
+                            currentUser={currentUser} 
+                            mockEvents={mockEvents} 
+                            setView={setView} 
+                        />;
+                    case 'departmentData': 
+                        return <DepartmentDataPage setView={setView} />;
+                    case 'settings': 
+                        return <SettingsPage 
+                            currentUser={currentUser} 
+                            setView={setView} 
+                            setManagingTable={setManagingTable} 
+                            theme={theme} 
+                            setTheme={setTheme} 
+                            onUpdatePassword={handleUpdatePassword} 
+                        />;
+                    case 'manageTable': 
+                        return <ManageTablePage 
+                            tableName={managingTable} 
+                            setView={setView} 
+                            mockEvents={mockEvents} 
+                            currentUser={currentUser} 
+                            setMockEvents={setMockEvents} 
+                            mockDepartments={mockDepartments} 
+                            setMockDepartments={setMockDepartments} 
+                            mockAccess={mockAccess} 
+                            setMockAccess={setMockAccess} 
+                        />;
+                    default: 
+                        return <DashboardPage 
+                            currentUser={currentUser} 
+                            setView={setView} 
+                            setEventId={setSelectedEventId} 
+                            mockEvents={mockEvents} 
+                            onOpenNotifications={() => setShowNotifications(true)}
+                        />;
                 }
             };
             
             const showNav = currentUser && view !== 'login';
 
             return (
-                <div className="bg-gray-100 dark:bg-gray-900 min-h-screen">
+                <div className="bg-gray-100 dark:bg-gray-900 min-h-screen relative">
+                    {/* 1. Renderiza a tela atual */}
                     {renderView()}
+                    
+                    {/* 2. Renderiza o Modal de Notificações (Fica "por cima" de tudo) */}
+                    <NotificationCenterModal 
+                        isOpen={showNotifications} 
+                        onClose={() => setShowNotifications(false)} 
+                        mockDepartments={mockDepartments}
+                    />
+
+                    {/* 3. Renderiza o Menu Inferior */}
                     {showNav && <BottomNav activeView={view} setView={setView} />}
                 </div>
             );
