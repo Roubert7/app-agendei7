@@ -204,12 +204,12 @@ function processarAcao(action, payload) {
         return { status: 'error', message: "Ação desconhecida: " + action };
 
       case 'getInitialData':
-        // Esta função retorna tudo o que o app precisa ao abrir de uma vez
         return {
-          eventos: getEventos(),         // Retorna lista de eventos
-          departamentos: getDepartamentos(), // Retorna lista de departamentos
-          mural: getMuralPosts(),        // Retorna posts do mural
-          // Adicione aqui outras listas se seu Dashboard precisar
+           // MUDANÇA AQUI: Trazemos os eventos do CALENDÁRIO para exibir no Dashboard
+           eventos: getItensCalendario(), 
+           departamentos: getDepartamentos(),
+           mural: getMuralPosts(),
+           currentUser: { name: 'Visitante', id: 'guest' }
         };
 
     }
@@ -507,6 +507,28 @@ function getTodasAsEscalas() {
       };
     }).filter(Boolean);
   } catch(e) { return []; }
+}
+
+function getItensCalendario() {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("CALENDÁRIO");
+    // Se não existir ou estiver vazia, retorna array vazio
+    if (!sheet || sheet.getLastRow() < 2) return [];
+
+    // Supondo colunas: A=ID, B=Data, C=Título, D=Local, E=Descrição (Ajuste conforme sua tabela real)
+    const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 5).getValues();
+
+    return data.map(row => ({
+      id: row[0],
+      date: row[1], // O EventCard novo vai tratar isso, seja Date ou String
+      name: row[2], // Título
+      location: row[3],
+      description: row[4]
+    }));
+  } catch (e) {
+    console.error("Erro CALENDÁRIO: " + e.message);
+    return [];
+  }
 }
 
 function atualizarEscala(dados) {
