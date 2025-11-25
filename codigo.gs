@@ -158,6 +158,9 @@ function processarAcao(action, payload) {
         return deleteMuralFile(idParaDeletar);
 
       // --- AÇÕES DE DADOS GERAIS ---
+      case 'addCalendarEvent':
+        return adicionarEventoCalendario(payload);
+        
       case 'getDepartamentos':
         return getDepartamentos();
         
@@ -591,3 +594,32 @@ function uploadArquivoParaDrive(obj) {
 function getEscalasParaCalendario() { return getTodasAsEscalas(); } // Reutiliza lógica
 function adicionarEscalaUnicaNaAgenda(e) { /* Lógica mantida da anterior */ return "Ok"; }
 function sincronizarTodasEscalasComAgenda() { /* Lógica mantida */ return "Ok"; }
+
+/**
+ * Adiciona um novo evento na tabela CALENDÁRIO
+ */
+function adicionarEventoCalendario(dados) {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("CALENDÁRIO");
+    if (!sheet) throw new Error("Aba 'CALENDÁRIO' não encontrada.");
+    
+    // Cria a aba se não existir (Opcional, mas seguro)
+    if (sheet.getLastRow() === 0) sheet.appendRow(['ID', 'DATA', 'TITULO', 'LOCAL', 'DESCRICAO']);
+
+    const nextId = new Date().getTime().toString(); // ID único baseado no tempo
+    
+    // Ajuste a ordem conforme suas colunas: A=ID, B=Data, C=Título, D=Local, E=Descrição
+    sheet.appendRow([
+      nextId,
+      dados.date, // Salva como string YYYY-MM-DD vinda do input date
+      dados.name,
+      dados.location,
+      dados.description
+    ]);
+    
+    return "Evento adicionado com sucesso!";
+  } catch (e) {
+    console.error("Erro ao adicionar evento: " + e.message);
+    throw new Error("Erro ao salvar evento.");
+  }
+}
