@@ -1261,22 +1261,29 @@ const LoginPage = ({ onLogin, initialDepartments = [] }) => {
         };
 
         // --- 2. NOVO COMPONENTE: ADICIONAR EVENTO AO CALENDÁRIO ---
-        const AddCalendarEventPage = ({ setView, onSaveSuccess }) => {
+        const AddCalendarEventPage = ({ setView, onSaveSuccess, branches = [] }) => {
             const [formData, setFormData] = useState({
                 date: '',
                 name: '',
                 location: '',
-                description: ''
+                description: '',
+                branch: '',     // Novo campo Filial
+                status: 'Evento Confirmado' // Novo campo Status (Padrão)
             });
             const [isSaving, setIsSaving] = useState(false);
 
             const handleSubmit = async (e) => {
                 e.preventDefault();
+                if (!formData.branch) {
+                    alert("Por favor, selecione uma Filial.");
+                    return;
+                }
+
                 setIsSaving(true);
                 try {
                     await api.addCalendarEvent(formData);
                     alert("Evento adicionado ao Calendário com sucesso!");
-                    onSaveSuccess(); // Atualiza e volta para o Dashboard
+                    onSaveSuccess(); 
                 } catch (error) {
                     alert("Erro ao salvar: " + error.message);
                 } finally {
@@ -1296,6 +1303,37 @@ const LoginPage = ({ onLogin, initialDepartments = [] }) => {
                                     <input type="text" required className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white" 
                                         value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} placeholder="Ex: Culto de Jovens" />
                                 </div>
+
+                                {/* --- NOVOS CAMPOS: FILIAL E STATUS --- */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Filial (Igreja) <span className="text-red-500">*</span></label>
+                                        <select 
+                                            required 
+                                            className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white"
+                                            value={formData.branch} 
+                                            onChange={e => setFormData({...formData, branch: e.target.value})}
+                                        >
+                                            <option value="">Selecione a Filial...</option>
+                                            {branches.map((b, idx) => (
+                                                <option key={idx} value={b}>{b}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Status</label>
+                                        <select 
+                                            required 
+                                            className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white"
+                                            value={formData.status} 
+                                            onChange={e => setFormData({...formData, status: e.target.value})}
+                                        >
+                                            <option value="Evento Confirmado">Evento Confirmado</option>
+                                            <option value="Evento Cancelado">Evento Cancelado</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                {/* ------------------------------------- */}
                                 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
@@ -3163,6 +3201,7 @@ const eventDate = parseDateSafe(event.date);
 // --- Componente Principal ---
         function App() {
             // --- ESTADOS DE USUÁRIO E NAVEGAÇÃO ---
+            const [mockBranches, setMockBranches] = useState([]);
             const [currentUser, setCurrentUser] = useState(null);
             const [view, setView] = useState('login'); 
             const [selectedEventId, setSelectedEventId] = useState(null);
@@ -3202,6 +3241,7 @@ const eventDate = parseDateSafe(event.date);
                         
                         if (data) {
                             if (data.eventos) setMockEvents(data.eventos);
+                            if (data.filiais) setMockBranches(data.filiais);
                             
                             if (data.departamentos) {
                                 // Converte array de strings em objeto para fácil acesso
@@ -3298,7 +3338,8 @@ const eventDate = parseDateSafe(event.date);
                         />;
                         case 'addCalendarEvent':
                           return <AddCalendarEventPage 
-                            setView={setView} onSaveSuccess={refreshData} 
+                            setView={setView} onSaveSuccess={refreshData}
+                            branches={mockBranches} 
                         />;
                     case 'addEvent': 
                         return <AddEventPage 
