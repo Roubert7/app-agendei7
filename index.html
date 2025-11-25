@@ -899,56 +899,60 @@ const Header = ({ title, onBack, rightAction }) => (
         };
 
         const EventCard = ({ event, onClick }) => {
-            // Função para tratar datas brasileiras ou objetos de data
             const getEventDateData = (dateRaw) => {
                 try {
                     let dateObj;
-                    
                     if (!dateRaw) return { day: '--', month: '---' };
-
-                    // Se for string "DD/MM/YYYY"
-                    if (typeof dateRaw === 'string' && dateRaw.includes('/')) {
-                        const [dia, mes, ano] = dateRaw.split('/');
-                        dateObj = new Date(ano, mes - 1, dia);
-                    } 
-                    // Se for string ISO "YYYY-MM-DD"
-                    else if (typeof dateRaw === 'string' && dateRaw.includes('-')) {
+                    if (typeof dateRaw === 'string' && dateRaw.includes('-')) {
                         const parts = dateRaw.split('T')[0].split('-');
                         dateObj = new Date(parts[0], parts[1] - 1, parts[2]);
-                    }
-                    // Se já for objeto Date
-                    else {
-                        dateObj = new Date(dateRaw);
-                    }
-
-                    // Validação final
+                    } else { dateObj = new Date(dateRaw); }
+                    
                     if (isNaN(dateObj.getTime())) return { day: '??', month: '???' };
-
                     const day = dateObj.getDate();
                     const month = dateObj.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
                     return { day, month };
-                } catch (e) {
-                    return { day: 'ER', month: 'RO' };
-                }
+                } catch (e) { return { day: 'ER', month: 'RO' }; }
             };
 
             const { day, month } = getEventDateData(event.date);
 
+            // Lógica de Cor do Status
+            const isConfirmed = event.status === 'Evento Confirmado';
+            const statusClass = isConfirmed 
+                ? "bg-green-100 text-green-700 border-green-200" 
+                : "bg-red-100 text-red-700 border-red-200";
+
             return (
-                <div onClick={onClick} className="bg-white dark:bg-gray-800 rounded-lg shadow-md flex items-center p-4 space-x-4 cursor-pointer hover:shadow-lg transition">
-                    <div className="flex flex-col items-center justify-center bg-violet-100 dark:bg-violet-900/50 rounded-lg w-16 h-16 text-violet-700 dark:text-violet-300 shrink-0">
-                        <span className="text-xs font-bold uppercase">{month}</span>
-                        <span className="text-2xl font-bold">{day}</span>
+                <div onClick={onClick} className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 flex flex-col gap-3 cursor-pointer hover:shadow-lg transition border-l-4 border-violet-500">
+                    <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-4">
+                            <div className="flex flex-col items-center justify-center bg-gray-100 dark:bg-gray-700 rounded-lg w-14 h-14 text-gray-600 dark:text-gray-300 shrink-0 font-bold border">
+                                <span className="text-[10px] uppercase">{month}</span>
+                                <span className="text-xl">{day}</span>
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-gray-800 dark:text-gray-200 text-lg leading-tight">{event.name}</h3>
+                                <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">{event.branch}</p>
+                            </div>
+                        </div>
+                        {/* Badge de Status */}
+                        <span className={`text-[10px] font-bold px-2 py-1 rounded-full border ${statusClass}`}>
+                            {isConfirmed ? 'CONFIRMADO' : 'CANCELADO'}
+                        </span>
                     </div>
-                    <div className="flex-1 min-w-0">
-                        <h3 className="font-bold text-gray-800 dark:text-gray-200 truncate">{event.name || event.title || 'Evento sem nome'}</h3>
-                        <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
-                            {event.time ? `${event.time} - ` : ''}{event.location || event.local || 'Local a definir'}
-                        </p>
+                    
+                    {/* Linha de Detalhes (Hora e Obs) */}
+                    <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400 border-t pt-2 dark:border-gray-700">
+                        <div className="flex items-center gap-1">
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            <span>{event.time || '--:--'}</span>
+                        </div>
+                         <div className="flex items-center gap-1 truncate flex-1">
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" /></svg>
+                            <span className="truncate">{event.description || 'Sem observações'}</span>
+                        </div>
                     </div>
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
                 </div>
             );
         };
@@ -1261,16 +1265,28 @@ const LoginPage = ({ onLogin, initialDepartments = [] }) => {
         };
 
         // --- 2. NOVO COMPONENTE: ADICIONAR EVENTO AO CALENDÁRIO ---
+// --- COMPONENTE ATUALIZADO: ADICIONAR EVENTO AO CALENDÁRIO ---
         const AddCalendarEventPage = ({ setView, onSaveSuccess, branches = [] }) => {
             const [formData, setFormData] = useState({
                 date: '',
+                time: '',       // Novo: Horário
                 name: '',
                 location: '',
                 description: '',
-                branch: '',     // Novo campo Filial
-                status: 'Evento Confirmado' // Novo campo Status (Padrão)
+                branch: '',
+                status: 'Evento Confirmado'
             });
+            const [attachment, setAttachment] = useState(null); // Estado para o arquivo
             const [isSaving, setIsSaving] = useState(false);
+            const fileInputRef = useRef(null);
+
+            // Função para converter arquivo em Base64 (necessário para enviar ao Google Script)
+            const fileToBase64 = (file) => new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => resolve(reader.result.split(',')[1]);
+                reader.onerror = error => reject(error);
+            });
 
             const handleSubmit = async (e) => {
                 e.preventDefault();
@@ -1281,8 +1297,19 @@ const LoginPage = ({ onLogin, initialDepartments = [] }) => {
 
                 setIsSaving(true);
                 try {
-                    await api.addCalendarEvent(formData);
-                    alert("Evento adicionado ao Calendário com sucesso!");
+                    // Prepara o payload
+                    let payload = { ...formData };
+
+                    // Se tiver anexo, converte e adiciona ao payload
+                    if (attachment) {
+                        const base64 = await fileToBase64(attachment);
+                        payload.fileData = base64;
+                        payload.fileName = attachment.name;
+                        payload.mimeType = attachment.type;
+                    }
+
+                    await api.addCalendarEvent(payload);
+                    alert("Evento adicionado com sucesso!");
                     onSaveSuccess(); 
                 } catch (error) {
                     alert("Erro ao salvar: " + error.message);
@@ -1304,7 +1331,6 @@ const LoginPage = ({ onLogin, initialDepartments = [] }) => {
                                         value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} placeholder="Ex: Culto de Jovens" />
                                 </div>
 
-                                {/* --- NOVOS CAMPOS: FILIAL E STATUS --- */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Filial (Igreja) <span className="text-red-500">*</span></label>
@@ -1333,8 +1359,8 @@ const LoginPage = ({ onLogin, initialDepartments = [] }) => {
                                         </select>
                                     </div>
                                 </div>
-                                {/* ------------------------------------- */}
                                 
+                                {/* LINHA DE DATA E HORÁRIO */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Data</label>
@@ -1342,9 +1368,43 @@ const LoginPage = ({ onLogin, initialDepartments = [] }) => {
                                             value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Local</label>
-                                        <input type="text" required className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white" 
-                                            value={formData.location} onChange={e => setFormData({...formData, location: e.target.value})} placeholder="Ex: Salão Principal" />
+                                        <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Horário</label>
+                                        <input type="time" required className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white" 
+                                            value={formData.time} onChange={e => setFormData({...formData, time: e.target.value})} />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Local</label>
+                                    <input type="text" required className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white" 
+                                        value={formData.location} onChange={e => setFormData({...formData, location: e.target.value})} placeholder="Ex: Salão Principal" />
+                                </div>
+
+                                {/* CAMPO DE ANEXO */}
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Anexo (Banner/Imagem)</label>
+                                    <div className="flex items-center gap-2">
+                                        <label className="cursor-pointer bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 px-4 py-2 rounded border transition text-sm font-semibold">
+                                            Escolher Arquivo
+                                            <input 
+                                                type="file" 
+                                                ref={fileInputRef}
+                                                className="hidden" 
+                                                onChange={e => setAttachment(e.target.files[0])}
+                                            />
+                                        </label>
+                                        <span className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-xs">
+                                            {attachment ? attachment.name : 'Nenhum arquivo selecionado'}
+                                        </span>
+                                        {attachment && (
+                                            <button 
+                                                type="button"
+                                                onClick={() => { setAttachment(null); fileInputRef.current.value = ""; }}
+                                                className="text-red-500 hover:text-red-700 text-xs font-bold"
+                                            >
+                                                Remover
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
 
@@ -1934,7 +1994,25 @@ const LoginPage = ({ onLogin, initialDepartments = [] }) => {
         const EventDetailPage = ({ currentUser, eventId, setView, assignments, setAssignments, mockEvents, mockScales }) => {
             const event = mockEvents.find(e => e.id === eventId);
             const eventScales = mockScales.filter(s => s.eventId === eventId);
-            
+            const parseDate = (str) => {
+                if(!str) return new Date();
+                const parts = str.split('-');
+                return new Date(parts[0], parts[1]-1, parts[2]);
+            };
+            const eventDateObj = parseDate(event.date);
+            const eventDateString = eventDateObj.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+            const escalasDoEvento = mockScales.filter(scale => {
+                let scaleDateStr = '';
+                if (typeof scale.dataEvento === 'string') {
+                    scaleDateStr = scale.dataEvento.split('T')[0]; // Pega YYYY-MM-DD
+                } else if (scale.dataEvento instanceof Date) {
+                    scaleDateStr = scale.dataEvento.toISOString().split('T')[0];
+                } else {
+                    // Tenta converter timestamp
+                    scaleDateStr = new Date(scale.dataEvento).toISOString().split('T')[0];
+                }
+                return scaleDateStr === event.date; // Compara '2025-11-20' com '2025-11-20'
+            });
             const [isGenerating, setIsGenerating] = useState(false);
             const [generatedContent, setGeneratedContent] = useState('');
             const [modalTitle, setModalTitle] = useState('');
@@ -1977,6 +2055,105 @@ const LoginPage = ({ onLogin, initialDepartments = [] }) => {
                     setIsGenerating(false);
                 }
             };
+
+            const isConfirmed = event.status === 'Evento Confirmado';
+
+            return (
+                <div className="pb-20">
+                    <Header title="Detalhes do Evento" onBack={() => setView('dashboard')} />
+                    
+                    {/* Banner / Imagem de Capa */}
+                    {event.attachment && (
+                        <div className="w-full h-48 bg-gray-200 dark:bg-gray-700 relative overflow-hidden group">
+                             {/* Se for imagem, exibe. Se for PDF, mostra icone */}
+                             {event.attachment.includes('drive.google.com') ? (
+                                <img 
+                                    src={getDriveDirectImage(event.attachment)} 
+                                    className="w-full h-full object-cover" 
+                                    alt="Capa do Evento"
+                                    referrerPolicy="no-referrer"
+                                    onError={(e) => e.target.src = 'https://via.placeholder.com/800x400?text=Arquivo+Anexado'} 
+                                />
+                             ) : (
+                                <div className="flex items-center justify-center h-full text-gray-500">Arquivo de Capa Disponível</div>
+                             )}
+                             
+                             <a href={event.attachment} target="_blank" className="absolute bottom-4 right-4 bg-white text-gray-800 px-4 py-2 rounded-full text-xs font-bold shadow-lg hover:bg-violet-50 transition flex items-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                                Baixar / Ver Original
+                             </a>
+                        </div>
+                    )}
+
+                    <main className="p-4 max-w-4xl mx-auto -mt-6 relative z-10">
+                        {/* Cartão Principal */}
+                        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-6 border-t-4 border-violet-500">
+                            <div className="flex justify-between items-start mb-4">
+                                <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-200">{event.name}</h1>
+                                <span className={`px-3 py-1 rounded-full text-xs font-bold ${isConfirmed ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                    {event.status}
+                                </span>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 text-sm">
+                                <div className="flex items-center gap-3 text-gray-600 dark:text-gray-300">
+                                    <div className="w-8 h-8 rounded-full bg-violet-100 flex items-center justify-center text-violet-600"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg></div>
+                                    <div>
+                                        <p className="font-bold">Data</p>
+                                        <p className="capitalize">{eventDateString}</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-3 text-gray-600 dark:text-gray-300">
+                                    <div className="w-8 h-8 rounded-full bg-violet-100 flex items-center justify-center text-violet-600"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></div>
+                                    <div>
+                                        <p className="font-bold">Horário</p>
+                                        <p>{event.time || 'A definir'}</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-3 text-gray-600 dark:text-gray-300">
+                                    <div className="w-8 h-8 rounded-full bg-violet-100 flex items-center justify-center text-violet-600"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg></div>
+                                    <div>
+                                        <p className="font-bold">Local</p>
+                                        <p>{event.location} ({event.branch || 'Matriz'})</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div className="bg-gray-50 dark:bg-gray-700/30 p-4 rounded-lg border dark:border-gray-700">
+                                <h3 className="font-bold text-gray-800 dark:text-gray-200 mb-2 text-sm">Sobre o evento</h3>
+                                <p className="text-gray-600 dark:text-gray-400 text-sm whitespace-pre-wrap">{event.description || "Nenhuma descrição informada."}</p>
+                            </div>
+                        </div>
+
+                        {/* Lista de Escalas Cruzadas */}
+                        <h3 className="text-lg font-bold text-gray-800 dark:text-gray-200 mb-4 px-1">Escalas Confirmadas ({escalasDoEvento.length})</h3>
+                        
+                        {escalasDoEvento.length === 0 ? (
+                            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-8 text-center text-gray-500">
+                                <p>Nenhuma escala lançada para esta data ainda.</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-3">
+                                {escalasDoEvento.map((escala) => (
+                                    <div key={escala.id} className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 border-l-4 border-blue-500 flex justify-between items-center">
+                                        <div>
+                                            <p className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase mb-1">{escala.departamento}</p>
+                                            <h4 className="font-bold text-gray-800 dark:text-gray-200">{escala.nomePessoa}</h4>
+                                            <p className="text-sm text-gray-500">{escala.funcao}</p>
+                                        </div>
+                                        {escala.status && (
+                                            <span className="text-[10px] bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded font-medium">
+                                                {escala.status}
+                                            </span>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </main>
+                </div>
+            );
+        };
 
             const handleGenerateInspiration = () => {
                 setModalTitle('Mensagem Inspiradora ✨');
@@ -3236,12 +3413,13 @@ const eventDate = parseDateSafe(event.date);
             useEffect(() => {
                 const loadData = async () => {
                     try {
-                        // Chama a função unificada do Backend
                         const data = await api.getInitialData();
                         
                         if (data) {
                             if (data.eventos) setMockEvents(data.eventos);
-                            if (data.filiais) setMockBranches(data.filiais);
+                            
+                            // --- ADICIONADO: Carrega as Escalas Reais ---
+                            if (data.escalas) setMockScales(data.escalas);
                             
                             if (data.departamentos) {
                                 // Converte array de strings em objeto para fácil acesso
@@ -3249,7 +3427,7 @@ const eventDate = parseDateSafe(event.date);
                                 data.departamentos.forEach(d => deptsObj[d] = { DE_NOME_DEPARTAMENTO: d });
                                 setMockDepartments(deptsObj);
                             }
-                            
+                            if (data.filiais) setMockBranches(data.filiais);
                             // Se o backend devolver sessão ativa (opcional futuro), restaura login
                             if (data.currentUser && data.currentUser.id !== 'guest') {
                                 setCurrentUser(data.currentUser);
