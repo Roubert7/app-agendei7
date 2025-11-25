@@ -578,6 +578,10 @@ const api = {
     },
 
     // --- MÉTODOS DE DADOS GERAIS ---
+    addCalendarEvent: function(eventData) {
+        return this._callApi('addCalendarEvent', eventData);
+    },
+
     getInitialData: function() {
         return this._callApi('getInitialData');
     },
@@ -1178,6 +1182,18 @@ const DashboardPage = ({ currentUser, setView, setEventId, mockEvents, onOpenNot
             const eventosParaExibir = Array.isArray(mockEvents) ? mockEvents : [];
 
             return (
+                      <div className="space-y-4">
+              <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-lg font-bold text-gray-800 dark:text-gray-200">Próximos Eventos (Calendário)</h3>
+                  
+                  {/* --- NOVO BOTÃO PEQUENO E ROXO --- */}
+                  <button 
+                      onClick={() => setView('addCalendarEvent')}
+                      className="bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold py-1.5 px-3 rounded-lg transition flex items-center gap-1 shadow-sm"
+                  >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                      Adicionar
+                  </button>
                 <div>
                     <header className="bg-white dark:bg-gray-800 shadow-md dark:shadow-gray-700 sticky top-0 z-10">
                         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -3149,6 +3165,70 @@ const eventDate = parseDateSafe(event.date);
             );
         }
 
+const AddCalendarEventPage = ({ setView, onSaveSuccess }) => {
+            const [formData, setFormData] = useState({
+                date: '',
+                name: '',
+                location: '',
+                description: ''
+            });
+            const [isSaving, setIsSaving] = useState(false);
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                setIsSaving(true);
+                try {
+                    await api.addCalendarEvent(formData);
+                    alert("Evento adicionado ao Calendário!");
+                    onSaveSuccess(); // Função para recarregar dados e voltar
+                } catch (error) {
+                    alert("Erro ao salvar: " + error.message);
+                } finally {
+                    setIsSaving(false);
+                }
+            };
+
+            return (
+                <div>
+                    <Header title="Novo Evento" onBack={() => setView('dashboard')} />
+                    <main className="p-4 max-w-4xl mx-auto">
+                        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+                            <h2 className="text-lg font-bold text-gray-800 dark:text-gray-200 mb-4">Detalhes do Evento</h2>
+                            <form onSubmit={handleSubmit} className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Título do Evento</label>
+                                    <input type="text" required className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white" 
+                                        value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} placeholder="Ex: Culto de Jovens" />
+                                </div>
+                                
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Data</label>
+                                        <input type="date" required className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white" 
+                                            value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Local</label>
+                                        <input type="text" required className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white" 
+                                            value={formData.location} onChange={e => setFormData({...formData, location: e.target.value})} placeholder="Ex: Salão Principal" />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Descrição</label>
+                                    <textarea className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white h-24" 
+                                        value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} placeholder="Detalhes sobre o evento..."></textarea>
+                                </div>
+
+                                <button type="submit" disabled={isSaving} className="w-full bg-violet-600 text-white font-bold py-3 rounded-lg hover:bg-violet-700 transition flex justify-center items-center">
+                                    {isSaving ? <div className="loader w-5 h-5 border-2 border-white border-t-transparent"></div> : 'Salvar Evento'}
+                                </button>
+                            </form>
+                        </div>
+                    </main>
+                </div>
+            );
+        };
 
         // --- Componente Principal App Completo ---
 // --- Componente Principal ---
@@ -3229,6 +3309,19 @@ const eventDate = parseDateSafe(event.date);
 
             // --- HANDLERS (FUNÇÕES DE AÇÃO) ---
 
+            const refreshData = async () => {
+                    setLoading(true);
+                    try {
+                        const data = await api.getInitialData();
+                        if (data && data.eventos) setMockEvents(data.eventos);
+                        setView('dashboard');
+                    } catch (e) {
+                        console.error(e);
+                    } finally {
+                        setLoading(false);
+                    }
+                };
+
             const handleLogin = (userData) => {
                 setCurrentUser(userData);
                 setView('dashboard');
@@ -3273,6 +3366,10 @@ const eventDate = parseDateSafe(event.date);
                             mockEvents={mockEvents} 
                             // Passa a função que abre o modal ao clicar no sino
                             onOpenNotifications={() => setShowNotifications(true)} 
+                        />;
+                        case 'addCalendarEvent':
+                          return <AddCalendarEventPage 
+                            setView={setView} onSaveSuccess={refreshData} 
                         />;
                     case 'addEvent': 
                         return <AddEventPage 
