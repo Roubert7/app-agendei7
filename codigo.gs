@@ -3,7 +3,8 @@
 // ===============================================================
 const EMAIL_ADMIN = "sergioroubert@gmail.com";
 const DRIVE_MURAL_FOLDER_ID = "10v9Znjvprd2_lZS4u6ne-EaReaYgKcRm"; 
-const MURAL_SHEET_NAME = "MURAL_POSTAGENS"; 
+const MURAL_SHEET_NAME = "MURAL_POSTAGENS";
+const DRIVE_CALENDAR_FOLDER_ID = "1II7_Rp4BN4fwxb3z-2AiDiBqb3_erA0i"; 
 
 // ===============================================================
 // 1. A NOVA "PONTE" (Roteadores)
@@ -208,9 +209,9 @@ function processarAcao(action, payload) {
 
       case 'getInitialData':
         return {
-           // MUDANÇA AQUI: Trazemos os eventos do CALENDÁRIO para exibir no Dashboard
-           eventos: getItensCalendario(), 
+           eventos: getItensCalendario(), // <--- TEM QUE CHAMAR A FUNÇÃO NOVA
            departamentos: getDepartamentos(),
+           escalas: getTodasAsEscalas(),
            filiais: getFiliais(),
            mural: getMuralPosts(),
            currentUser: { name: 'Visitante', id: 'guest' }
@@ -513,31 +514,47 @@ function getTodasAsEscalas() {
   } catch(e) { return []; }
 }
 
+/**
+ * [CORRIGIDO] Busca itens do calendário
+ * Lê as colunas A até F (1 a 6)
+ */
+/**
+ * [CORRIGIDO] Busca itens do calendário lendo TODAS as colunas (A até I)
+ */
 function getItensCalendario() {
   try {
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("CALENDÁRIO");
     if (!sheet || sheet.getLastRow() < 2) return [];
 
-    // Pega da linha 2 até o fim, colunas A(1) até F(6)
-    const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 6).getValues();
+    // Pega da linha 2 até o fim, colunas A(1) até I(9)
+    // A=ID, B=NOME, C=DATA, D=LOCAL, E=FILIAL, F=STATUS, G=HORARIO, H=ANEXO, I=DESCRICAO
+    const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 9).getValues();
 
     return data.map(row => {
-      // Tratamento de Data para evitar erros de fuso horário na exibição
-      let dataTratada = row[2];
+      // Tratamento de Data
+      let dataVisual = row[2];
       if (row[2] instanceof Date) {
-        // Se o Sheets reconheceu como data, formata para string ISO YYYY-MM-DD
-        // para o Frontend entender fácil
-        dataTratada = Utilities.formatDate(row[2], Session.getScriptTimeZone(), "yyyy-MM-dd");
+        dataVisual = Utilities.formatDate(row[2], Session.getScriptTimeZone(), "yyyy-MM-dd");
+      }
+
+      // Tratamento de Horário (se vier como objeto Date do Google)
+      let horaVisual = row[6];
+      if (row[6] instanceof Date) {
+         horaVisual = Utilities.formatDate(row[6], Session.getScriptTimeZone(), "HH:mm");
       }
 
       return {
         id: row[0],          // CA_ID
         name: row[1],        // CA_NOME
-        date: dataTratada,   // CA_DATAEVENTO
+        date: dataVisual,    // CA_DATAEVENTO
         location: row[3],    // CA_LOCAL
-        department: row[4],  // CA_FILIAL (Usamos o campo 'department' visualmente para mostrar a Filial)
+        branch: row[4],      // CA_FILIAL
         status: row[5],      // CA_STATUS
-        description: row[5]  // Usamos o Status na descrição para aparecer no card, já que não temos campo descrição na tabela
+        time: horaVisual,    // CA_HORARIO (Novo)
+        attachment: row[7],  // CA_ANEXO (URL do Drive)
+        description: row[8], // DESCRICAO
+        // Mantemos 'department' como alias de branch para compatibilidade visual antiga se precisar
+        department: row[4]   
       };
     });
   } catch (e) {
@@ -632,34 +649,54 @@ function adicionarEventoCalendario(dados) {
   try {
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("CALENDÁRIO");
     if (!sheet) throw new Error("Aba 'CALENDÁRIO' não encontrada.");
-    
-    // Gera ID aleatório de 6 dígitos
-    const randomId = Math.floor(100000 + Math.random() * 900000);
-    
-    // Formata a data para garantir que o Google Sheets entenda como texto ou data válida
-    // (O input date vem como YYYY-MM-DD)
-    const dataEvento = dados.date; 
 
-    // Mapeamento Exato:
-    // Coluna A (1) = CA_ID
-    // Coluna B (2) = CA_NOME
-    // Coluna C (3) = CA_DATAEVENTO
-    // Coluna D (4) = CA_LOCAL
-    // Coluna E (5) = CA_FILIAL
-    // Coluna F (6) = CA_STATUS
-    
+    // Se a aba for nova, cria cabeçalho
+    if (sheet.getLastRow() === 0) {
+       sheet.appendRow(['CA_ID', 'CA_NOME', 'CA_DATAEVENTO', 'CA_LOCAL', 'CA_FILIAL', 'CA_STATUS', 'CA_HORARIO', 'CA_ANEXO', 'DESCRICAO']);
+    }
+
+    const randomId = Math.floor(100000 + Math.random() * 900000);
+
+    // 1. Processa o Upload (se houver arquivo)
+    let fileUrl = "";
+    if (dados.fileData && dados.fileName) {
+       fileUrl = saveFileToDriveCalendar(dados.fileData, dados.fileName, dados.mimeType);
+    }
+
+    // 2. Salva na Planilha
+    // Ordem das colunas: 
+    // A=ID, B=Nome, C=Data, D=Local, E=Filial, F=Status, G=Horario, H=Anexo, I=Descricao
     sheet.appendRow([
-      randomId,        // CA_ID
-      dados.name,      // CA_NOME
-      dataEvento,      // CA_DATAEVENTO
-      dados.location,  // CA_LOCAL
-      dados.branch,    // CA_FILIAL
-      dados.status     // CA_STATUS
+      randomId,           // CA_ID
+      dados.name,         // CA_NOME
+      dados.date,         // CA_DATAEVENTO
+      dados.location,     // CA_LOCAL
+      dados.branch,       // CA_FILIAL
+      dados.status,       // CA_STATUS
+      dados.time,         // CA_HORARIO (Novo)
+      fileUrl,            // CA_ANEXO (Novo - URL do Drive)
+      dados.description   // DESCRICAO (Movido para o final ou Coluna I)
     ]);
-    
+
     return "Evento adicionado com sucesso!";
   } catch (e) {
     console.error("Erro ao adicionar evento: " + e.message);
-    throw new Error("Erro ao salvar evento.");
+    throw new Error("Erro ao salvar evento: " + e.message);
+  }
+}
+
+function saveFileToDriveCalendar(base64Data, fileName, mimeType) {
+  try {
+    if (!DRIVE_CALENDAR_FOLDER_ID) throw new Error("ID da pasta não configurado.");
+
+    const blob = Utilities.newBlob(Utilities.base64Decode(base64Data), mimeType, fileName);
+    const folder = DriveApp.getFolderById(DRIVE_CALENDAR_FOLDER_ID);
+    const file = folder.createFile(blob);
+    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+
+    return file.getUrl();
+  } catch (e) {
+    console.error("Erro ao salvar arquivo no Drive: " + e.message);
+    return ""; // Retorna vazio se falhar, para não travar o evento
   }
 }
