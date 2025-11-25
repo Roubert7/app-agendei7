@@ -160,7 +160,7 @@ function processarAcao(action, payload) {
       // --- AÇÕES DE DADOS GERAIS ---
       case 'addCalendarEvent':
         return adicionarEventoCalendario(payload);
-        
+
       case 'getDepartamentos':
         return getDepartamentos();
         
@@ -211,6 +211,7 @@ function processarAcao(action, payload) {
            // MUDANÇA AQUI: Trazemos os eventos do CALENDÁRIO para exibir no Dashboard
            eventos: getItensCalendario(), 
            departamentos: getDepartamentos(),
+           filiais: getFiliais(),
            mural: getMuralPosts(),
            currentUser: { name: 'Visitante', id: 'guest' }
         };
@@ -515,19 +516,30 @@ function getTodasAsEscalas() {
 function getItensCalendario() {
   try {
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("CALENDÁRIO");
-    // Se não existir ou estiver vazia, retorna array vazio
     if (!sheet || sheet.getLastRow() < 2) return [];
 
-    // Supondo colunas: A=ID, B=Data, C=Título, D=Local, E=Descrição (Ajuste conforme sua tabela real)
-    const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 5).getValues();
+    // Pega da linha 2 até o fim, colunas A(1) até F(6)
+    const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 6).getValues();
 
-    return data.map(row => ({
-      id: row[0],
-      date: row[1], // O EventCard novo vai tratar isso, seja Date ou String
-      name: row[2], // Título
-      location: row[3],
-      description: row[4]
-    }));
+    return data.map(row => {
+      // Tratamento de Data para evitar erros de fuso horário na exibição
+      let dataTratada = row[2];
+      if (row[2] instanceof Date) {
+        // Se o Sheets reconheceu como data, formata para string ISO YYYY-MM-DD
+        // para o Frontend entender fácil
+        dataTratada = Utilities.formatDate(row[2], Session.getScriptTimeZone(), "yyyy-MM-dd");
+      }
+
+      return {
+        id: row[0],          // CA_ID
+        name: row[1],        // CA_NOME
+        date: dataTratada,   // CA_DATAEVENTO
+        location: row[3],    // CA_LOCAL
+        department: row[4],  // CA_FILIAL (Usamos o campo 'department' visualmente para mostrar a Filial)
+        status: row[5],      // CA_STATUS
+        description: row[5]  // Usamos o Status na descrição para aparecer no card, já que não temos campo descrição na tabela
+      };
+    });
   } catch (e) {
     console.error("Erro CALENDÁRIO: " + e.message);
     return [];
@@ -598,23 +610,51 @@ function sincronizarTodasEscalasComAgenda() { /* Lógica mantida */ return "Ok";
 /**
  * Adiciona um novo evento na tabela CALENDÁRIO
  */
+
+function getFiliais() {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("FILIAL");
+    if (!sheet || sheet.getLastRow() < 2) return [];
+    
+    // Assume que o Nome da Filial está na Coluna B (índice 2)
+    // Ajuste o range se estiver em outra coluna. Aqui pega da B2 até o fim.
+    const data = sheet.getRange(2, 2, sheet.getLastRow() - 1, 1).getValues();
+    
+    // Retorna array simples: ["Matriz", "Jardim Emilia", etc]
+    return data.flat().filter(f => f !== ""); 
+  } catch (e) {
+    console.error("Erro ao buscar filiais: " + e.message);
+    return [];
+  }
+}
+
 function adicionarEventoCalendario(dados) {
   try {
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("CALENDÁRIO");
     if (!sheet) throw new Error("Aba 'CALENDÁRIO' não encontrada.");
     
-    // Cria a aba se não existir (Opcional, mas seguro)
-    if (sheet.getLastRow() === 0) sheet.appendRow(['ID', 'DATA', 'TITULO', 'LOCAL', 'DESCRICAO']);
-
-    const nextId = new Date().getTime().toString(); // ID único baseado no tempo
+    // Gera ID aleatório de 6 dígitos
+    const randomId = Math.floor(100000 + Math.random() * 900000);
     
-    // Ajuste a ordem conforme suas colunas: A=ID, B=Data, C=Título, D=Local, E=Descrição
+    // Formata a data para garantir que o Google Sheets entenda como texto ou data válida
+    // (O input date vem como YYYY-MM-DD)
+    const dataEvento = dados.date; 
+
+    // Mapeamento Exato:
+    // Coluna A (1) = CA_ID
+    // Coluna B (2) = CA_NOME
+    // Coluna C (3) = CA_DATAEVENTO
+    // Coluna D (4) = CA_LOCAL
+    // Coluna E (5) = CA_FILIAL
+    // Coluna F (6) = CA_STATUS
+    
     sheet.appendRow([
-      nextId,
-      dados.date, // Salva como string YYYY-MM-DD vinda do input date
-      dados.name,
-      dados.location,
-      dados.description
+      randomId,        // CA_ID
+      dados.name,      // CA_NOME
+      dataEvento,      // CA_DATAEVENTO
+      dados.location,  // CA_LOCAL
+      dados.branch,    // CA_FILIAL
+      dados.status     // CA_STATUS
     ]);
     
     return "Evento adicionado com sucesso!";
