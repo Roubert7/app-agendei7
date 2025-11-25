@@ -1256,9 +1256,73 @@ const DashboardPage = ({ currentUser, setView, setEventId, mockEvents, onOpenNot
                     </main>
                 </div>
             );
-        };
-        
-        const AddEventPage = ({ setView, setMockEvents, mockEvents, editingEventId, setEditingEventId }) => {
+};
+const AddCalendarEventPage = ({ setView, onSaveSuccess }) => {
+            const [formData, setFormData] = useState({
+                date: '',
+                name: '',
+                location: '',
+                description: ''
+            });
+            const [isSaving, setIsSaving] = useState(false);
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                setIsSaving(true);
+                try {
+                    await api.addCalendarEvent(formData);
+                    alert("Evento adicionado ao Calendário!");
+                    onSaveSuccess(); 
+                } catch (error) {
+                    alert("Erro ao salvar: " + error.message);
+                } finally {
+                    setIsSaving(false);
+                }
+            };
+
+            return (
+                <div>
+                    <Header title="Novo Evento" onBack={() => setView('dashboard')} />
+                    <main className="p-4 max-w-4xl mx-auto">
+                        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+                            <h2 className="text-lg font-bold text-gray-800 dark:text-gray-200 mb-4">Detalhes do Evento</h2>
+                            <form onSubmit={handleSubmit} className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Título do Evento</label>
+                                    <input type="text" required className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white" 
+                                        value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} placeholder="Ex: Culto de Jovens" />
+                                </div>
+                                
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Data</label>
+                                        <input type="date" required className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white" 
+                                            value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Local</label>
+                                        <input type="text" required className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white" 
+                                            value={formData.location} onChange={e => setFormData({...formData, location: e.target.value})} placeholder="Ex: Salão Principal" />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Descrição</label>
+                                    <textarea className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white h-24" 
+                                        value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} placeholder="Detalhes sobre o evento..."></textarea>
+                                </div>
+
+                                <button type="submit" disabled={isSaving} className="w-full bg-violet-600 text-white font-bold py-3 rounded-lg hover:bg-violet-700 transition flex justify-center items-center">
+                                    {isSaving ? <div className="loader w-5 h-5 border-2 border-white border-t-transparent"></div> : 'Salvar Evento'}
+                                </button>
+                            </form>
+                        </div>
+                    </main>
+                </div>
+          );
+};
+
+const AddEventPage = ({ setView, setMockEvents, mockEvents, editingEventId, setEditingEventId }) => {
             const [date, setDate] = useState('');
             const [status, setStatus] = useState('Aberta');
             const [department, setDepartment] = useState('');
@@ -1281,6 +1345,7 @@ const DashboardPage = ({ currentUser, setView, setEventId, mockEvents, onOpenNot
             const [musica4, setMusica4] = useState('');
             const [existingAttachmentName, setExistingAttachmentName] = useState('');
 
+            // Constantes de opções
             const departmentOptions = ALL_DEPARTMENTS_NAMES;
             const eventTypeOptions = ['Culto', 'CULTO DE SÁBADO', 'Ensaio', 'Ação Social', 'Reunião', 'Vigília'];
             const statusOptions = ['Aberta', 'Fechada', 'Em Andamento', 'Planejada'];
@@ -1302,8 +1367,8 @@ const DashboardPage = ({ currentUser, setView, setEventId, mockEvents, onOpenNot
                     setEventType(eventToEdit.eventType || '');
                     setResponsible(eventToEdit.responsible || '');
                     setMainRole(eventToEdit.mainRole || '');
-                    setObservations(eventToEdit.description || ''); // 'description' é usado para observações
-                    setAttachment(null); // Resetar anexo por segurança
+                    setObservations(eventToEdit.description || '');
+                    setAttachment(null);
                     setExistingAttachmentName(eventToEdit.attachmentName || '');
                     if(document.getElementById('attachment')) document.getElementById('attachment').value = '';
 
@@ -1329,7 +1394,6 @@ const DashboardPage = ({ currentUser, setView, setEventId, mockEvents, onOpenNot
                 }
             }, [editingEventId, mockEvents]);
 
-
             const resetForm = () => {
                 setDate(''); setStatus('Aberta'); setDepartment('');
                 setEventType(''); setResponsible(''); setMainRole('');
@@ -1337,7 +1401,6 @@ const DashboardPage = ({ currentUser, setView, setEventId, mockEvents, onOpenNot
                 setExistingAttachmentName('');
                 if(document.getElementById('attachment')) document.getElementById('attachment').value = '';
 
-                // Resetar campos de música
                 setNomeCantor(''); setIntegrante1(''); setIntegrante2('');
                 setIntegrante3(''); setIntegrante4(''); setMusica1('');
                 setMusica2(''); setMusica3(''); setMusica4('');
@@ -1362,22 +1425,17 @@ const DashboardPage = ({ currentUser, setView, setEventId, mockEvents, onOpenNot
                 };
 
                 if (isEditing) {
-                    setMockEvents(prevEvents => prevEvents.map(event => 
-                        event.id === editingEventId ? { ...event, ...eventData } : event
-                    ));
-                    alert('Agendamento atualizado com sucesso!');
-                    setEditingEventId(null);
-                    setView('editScales');
+                    // Lógica de edição simulada (idealmente chamaria API)
+                    api.addEvent(eventData).then(() => { // Usando addEvent genericamente
+                         alert('Agendamento atualizado!');
+                         setEditingEventId(null);
+                         setView('editScales');
+                    });
                 } else {
-                    const newEvent = {
-                        ...eventData,
-                        id: 'evt' + new Date().getTime(),
-                        time: 'A definir', 
-                        location: 'A definir',
-                        serviceType: 'N/A', 
-                    };
-                    setMockEvents(prevEvents => [ newEvent, ...prevEvents]);
-                    setShowSuccess(true);
+                    // Lógica de inclusão via API
+                    api.addEvent(eventData).then(() => {
+                        setShowSuccess(true);
+                    });
                 }
             };
 
@@ -1386,7 +1444,7 @@ const DashboardPage = ({ currentUser, setView, setEventId, mockEvents, onOpenNot
             const optionalFieldsRequired = isMusica && isCultoSábado;
             
             const handleBack = () => {
-                setEditingEventId(null); // Limpa o ID de edição ao voltar
+                setEditingEventId(null);
                 setView(isEditing ? 'editScales' : 'dashboard');
             };
 
@@ -1441,7 +1499,6 @@ const DashboardPage = ({ currentUser, setView, setEventId, mockEvents, onOpenNot
                                     </select>
                                 </div>
                                 
-                                {/* Campos Condicionais para Ministério da Música */}
                                 {isMusica && (
                                     <div className="space-y-4 border-t border-gray-200 dark:border-gray-700 pt-6 mt-6">
                                         <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200">Detalhes do Louvor</h3>
@@ -1547,7 +1604,7 @@ const DashboardPage = ({ currentUser, setView, setEventId, mockEvents, onOpenNot
                 </div>
             );
         };
-
+        
         const EditScalesPage = ({ setView, mockEvents, setMockEvents, setEditingEventId }) => {
             const initialFilters = {
                 date: '', status: 'Todos', eventType: 'Todos', serviceType: 'Todos', department: 'Todos'
@@ -3165,72 +3222,8 @@ const eventDate = parseDateSafe(event.date);
             );
         }
 
-const AddCalendarEventPage = ({ setView, onSaveSuccess }) => {
-            const [formData, setFormData] = useState({
-                date: '',
-                name: '',
-                location: '',
-                description: ''
-            });
-            const [isSaving, setIsSaving] = useState(false);
 
-            const handleSubmit = async (e) => {
-                e.preventDefault();
-                setIsSaving(true);
-                try {
-                    await api.addCalendarEvent(formData);
-                    alert("Evento adicionado ao Calendário!");
-                    onSaveSuccess(); // Função para recarregar dados e voltar
-                } catch (error) {
-                    alert("Erro ao salvar: " + error.message);
-                } finally {
-                    setIsSaving(false);
-                }
-            };
-
-            return (
-                <div>
-                    <Header title="Novo Evento" onBack={() => setView('dashboard')} />
-                    <main className="p-4 max-w-4xl mx-auto">
-                        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
-                            <h2 className="text-lg font-bold text-gray-800 dark:text-gray-200 mb-4">Detalhes do Evento</h2>
-                            <form onSubmit={handleSubmit} className="space-y-4">
-                                <div>
-                                    <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Título do Evento</label>
-                                    <input type="text" required className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white" 
-                                        value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} placeholder="Ex: Culto de Jovens" />
-                                </div>
-                                
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Data</label>
-                                        <input type="date" required className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white" 
-                                            value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Local</label>
-                                        <input type="text" required className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white" 
-                                            value={formData.location} onChange={e => setFormData({...formData, location: e.target.value})} placeholder="Ex: Salão Principal" />
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Descrição</label>
-                                    <textarea className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white h-24" 
-                                        value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} placeholder="Detalhes sobre o evento..."></textarea>
-                                </div>
-
-                                <button type="submit" disabled={isSaving} className="w-full bg-violet-600 text-white font-bold py-3 rounded-lg hover:bg-violet-700 transition flex justify-center items-center">
-                                    {isSaving ? <div className="loader w-5 h-5 border-2 border-white border-t-transparent"></div> : 'Salvar Evento'}
-                                </button>
-                            </form>
-                        </div>
-                    </main>
-                </div>
-            );
-        };
-
-        // --- Componente Principal App Completo ---
+ // --- Componente Principal App Completo ---
 // --- Componente Principal ---
         function App() {
             // --- ESTADOS DE USUÁRIO E NAVEGAÇÃO ---
