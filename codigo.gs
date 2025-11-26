@@ -168,6 +168,12 @@ function processarAcao(action, payload) {
       case 'getEventos':
         return getEventos();
 
+        case 'updateCalendarEvent':
+        return atualizarEventoCalendario(payload);
+        
+      case 'deleteCalendarEvent':
+        return excluirEventoCalendario(payload.id);
+
       // --- AÇÕES DE LOGIN E ACESSO ---
       case 'login': // Nome padronizado para o novo frontend
       case 'verificarAcesso':
@@ -698,5 +704,68 @@ function saveFileToDriveCalendar(base64Data, fileName, mimeType) {
   } catch (e) {
     console.error("Erro ao salvar arquivo no Drive: " + e.message);
     return ""; // Retorna vazio se falhar, para não travar o evento
+  }
+}
+
+/**
+ * Atualiza um evento existente na tabela CALENDÁRIO
+ */
+function atualizarEventoCalendario(dados) {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("CALENDÁRIO");
+    const data = sheet.getDataRange().getValues();
+    
+    // Procura a linha pelo ID (Coluna A / Índice 0)
+    // Começa do 1 para pular cabeçalho
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][0]) === String(dados.id)) {
+        // Linha encontrada (i + 1 pois planilha começa em 1)
+        const row = i + 1;
+        
+        // Atualiza colunas: B=Nome, C=Data, D=Local, E=Filial, F=Status, G=Horario, H=Anexo, I=Descricao
+        // Se tiver arquivo novo, atualiza URL. Se não, mantém a antiga (ou trata no front)
+        
+        sheet.getRange(row, 2).setValue(dados.name);
+        sheet.getRange(row, 3).setValue(dados.date);
+        sheet.getRange(row, 4).setValue(dados.location);
+        sheet.getRange(row, 5).setValue(dados.branch);
+        sheet.getRange(row, 6).setValue(dados.status);
+        sheet.getRange(row, 7).setValue(dados.time);
+        
+        // Só atualiza anexo se vier um novo link, senão mantém
+        if (dados.fileUrl) {
+           sheet.getRange(row, 8).setValue(dados.fileUrl);
+        }
+        
+        sheet.getRange(row, 9).setValue(dados.description);
+        
+        return "Evento atualizado com sucesso!";
+      }
+    }
+    throw new Error("Evento não encontrado para atualização.");
+  } catch (e) {
+    console.error(e);
+    throw new Error("Erro ao atualizar: " + e.message);
+  }
+}
+
+/**
+ * Exclui um evento da tabela CALENDÁRIO
+ */
+function excluirEventoCalendario(id) {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("CALENDÁRIO");
+    const data = sheet.getDataRange().getValues();
+    
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][0]) === String(id)) {
+        sheet.deleteRow(i + 1);
+        return "Evento excluído com sucesso!";
+      }
+    }
+    throw new Error("Evento não encontrado para exclusão.");
+  } catch (e) {
+    console.error(e);
+    throw new Error("Erro ao excluir: " + e.message);
   }
 }
