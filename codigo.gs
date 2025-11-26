@@ -183,6 +183,9 @@ function processarAcao(action, payload) {
         return solicitarAcesso(payload);
 
       // --- AÇÕES DE ESCALAS ---
+      case 'addEvent': 
+        return adicionarEscala(payload);
+
       case 'getTodasAsEscalas':
         return getTodasAsEscalas();
         
@@ -428,9 +431,9 @@ function getDepartamentos() {
 function getEventos() {
   try {
     const aba = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("EVENTOS");
-    if (aba.getLastRow() < 2) return [];
-    const dados = aba.getRange("A2:C" + aba.getLastRow()).getValues();
-    return dados.map(linha => ({ id: linha[0], nome: linha[1], tipo: linha[2] }));
+    if (!aba || aba.getLastRow() < 2) return [];
+    const dados = aba.getRange("B2:B" + aba.getLastRow()).getValues();
+    return dados.flat().filter(depto => depto && depto.toUpperCase() !== 'ADMIN');
   } catch (e) { return []; }
 }
 
@@ -767,5 +770,57 @@ function excluirEventoCalendario(id) {
   } catch (e) {
     console.error(e);
     throw new Error("Erro ao excluir: " + e.message);
+  }
+}
+
+/**
+ * Adiciona escala na tabela oficial E na tabela de backup
+ */
+function adicionarEscala(dados) {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheetEscalas = ss.getSheetByName("ESCALAS");
+    const sheetBackup = ss.getSheetByName("BACKUP_ESCALAS");
+    
+    if (!sheetEscalas) throw new Error("Aba ESCALAS não encontrada.");
+    // Se backup não existir, cria
+    if (!sheetBackup) ss.insertSheet("BACKUP_ESCALAS");
+
+    const nextId = sheetEscalas.getLastRow() + 1; 
+    
+    // Monta a linha de dados
+    const rowData = [
+      nextId, 
+      dados.status || 'Aberta',
+      dados.date,
+      dados.name, // Tipo do Evento
+      dados.responsible, 
+      dados.mainRole, 
+      dados.department,
+      '', 
+      dados.description, 
+      dados.musicDetails?.nomeCantor || '',
+      dados.musicDetails?.musica1 || '',
+      dados.musicDetails?.musica2 || '',
+      dados.musicDetails?.musica3 || '',
+      dados.musicDetails?.musica4 || '',
+      dados.musicDetails?.integrante1 || '',
+      dados.musicDetails?.integrante2 || '',
+      dados.musicDetails?.integrante3 || '',
+      dados.musicDetails?.integrante4 || '',
+      dados.attachmentName || '',
+      '', 
+      ''  
+    ];
+    
+    // 1. Salva na Oficial
+    sheetEscalas.appendRow(rowData);
+    
+    // 2. Salva no Backup (Mesmos dados)
+    if (sheetBackup) sheetBackup.appendRow(rowData);
+    
+    return "Escala adicionada e backupeada com sucesso!";
+  } catch (e) {
+    throw new Error("Erro ao salvar escala: " + e.message);
   }
 }
