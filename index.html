@@ -1432,7 +1432,7 @@ const LoginPage = ({ onLogin, initialDepartments = [] }) => {
         };
 
         // (6) --- COMPONENTE: ADICIONAR AGENDAMENTO (ESCALA OPERACIONAL) ---
-        const AddEventPage = ({ setView, setMockEvents, editingEventId, setEditingEventId, departments = {}, eventTypes = [] }) => {
+        const AddEventPage = ({ setView, setMockEvents, mockEvents, editingEventId, setEditingEventId, departments = {}, eventTypes = [], roles = [] }) => {
             const [date, setDate] = useState('');
             const [status, setStatus] = useState('Aberta');
             const [department, setDepartment] = useState('');
@@ -1442,6 +1442,7 @@ const LoginPage = ({ onLogin, initialDepartments = [] }) => {
             const [observations, setObservations] = useState('');
             const [attachment, setAttachment] = useState(null);
             const [showSuccess, setShowSuccess] = useState(false);
+            const [existingAttachmentName, setExistingAttachmentName] = useState('');
             
             // Estados de Música
             const [nomeCantor, setNomeCantor] = useState('');
@@ -1453,34 +1454,60 @@ const LoginPage = ({ onLogin, initialDepartments = [] }) => {
             const [musica2, setMusica2] = useState('');
             const [musica3, setMusica3] = useState('');
             const [musica4, setMusica4] = useState('');
-            const [existingAttachmentName, setExistingAttachmentName] = useState('');
 
-            // --- DADOS REAIS (Vindos via Props do Banco de Dados) ---
-            const departmentOptions = Object.keys(departments); // Extrai nomes dos deptos
+            // --- LISTAS DINÂMICAS (SEM HARDCODE) ---
+            const departmentOptions = Object.keys(departments); 
             
-            // Se eventTypes for array de strings ou objetos, normaliza
+            // Normaliza tipos de eventos (se vier objeto ou string)
             const eventTypeOptions = eventTypes.map(t => (typeof t === 'object' ? t.nome : t)).filter(Boolean);
 
-            const statusOptions = ['Aberta', 'Fechada', 'Em Andamento', 'Planejada'];
-            // Nota: Se 'Função' vier do banco futuramente, altere aqui. Por enquanto fixo ou via tabela EVENTOS se ajustar o backend.
-            const roleOptions = ['Louvor', 'Palavra', 'Recepção', 'Mídia', 'Social', 'Diaconato', 'Sonoplastia']; 
+            // Normaliza funções (roles) vindas do banco
+            // AQUI ESTA A CORREÇÃO: Usamos apenas o que vem do banco. Se vier vazio, mostra vazio.
+            const roleOptions = Array.isArray(roles) ? roles : []; 
+
+            const statusOptions = ['Aberta', 'Fechada', 'Em Andamento', 'Planejada']; // Status do sistema pode ser fixo ou vir do banco se preferir
 
             const isEditing = !!editingEventId;
 
-            // Preenche formulário na edição (busca dados na memória ou backend)
-            // Nota: Como removemos Mocks, idealmente deveríamos buscar a escala específica pelo ID se não estiver na memória
-            // Por simplificação, mantemos o resetForm se não for edição.
+            useEffect(() => {
+                if (!editingEventId) {
+                    resetForm();
+                    return;
+                }
+                // Lógica de preencher dados na edição (Mantida igual)
+                const eventToEdit = mockEvents.find(e => e.id === editingEventId);
+                if (eventToEdit) {
+                    setDate(eventToEdit.date || '');
+                    setStatus(eventToEdit.status || 'Aberta');
+                    setDepartment(eventToEdit.department || '');
+                    setEventType(eventToEdit.eventType || '');
+                    setResponsible(eventToEdit.responsible || '');
+                    setMainRole(eventToEdit.mainRole || ''); // Deve bater com um item da lista roles
+                    setObservations(eventToEdit.description || '');
+                    setAttachment(null);
+                    setExistingAttachmentName(eventToEdit.attachmentName || '');
+                    
+                    const fileInput = document.getElementById('attachment_scale');
+                    if(fileInput) fileInput.value = '';
+
+                    if (eventToEdit.musicDetails) {
+                        const { nomeCantor='', integrante1='', integrante2='', integrante3='', integrante4='', musica1='', musica2='', musica3='', musica4='' } = eventToEdit.musicDetails;
+                        setNomeCantor(nomeCantor); setIntegrante1(integrante1); setIntegrante2(integrante2); setIntegrante3(integrante3); setIntegrante4(integrante4);
+                        setMusica1(musica1); setMusica2(musica2); setMusica3(musica3); setMusica4(musica4);
+                    }
+                }
+            }, [editingEventId, mockEvents]);
 
             const resetForm = () => {
                 setDate(''); setStatus('Aberta'); setDepartment('');
                 setEventType(''); setResponsible(''); setMainRole('');
-                setObservations(''); setAttachment(null);
-                setExistingAttachmentName('');
+                setObservations(''); setAttachment(null); setExistingAttachmentName('');
                 const fileInput = document.getElementById('attachment_scale');
                 if(fileInput) fileInput.value = '';
                 setNomeCantor(''); setIntegrante1(''); setIntegrante2(''); setIntegrante3(''); setIntegrante4(''); setMusica1(''); setMusica2(''); setMusica3(''); setMusica4('');
             };
 
+            // Função auxiliar base64
             const fileToBase64 = (file) => new Promise((resolve, reject) => {
                 const reader = new FileReader();
                 reader.readAsDataURL(file);
@@ -1491,12 +1518,12 @@ const LoginPage = ({ onLogin, initialDepartments = [] }) => {
             const handleSubmit = async (e) => {
                 e.preventDefault();
                 if (!date || !department || !eventType || !responsible) {
-                    alert('Preencha os campos obrigatórios.');
+                    alert('Por favor, preencha todos os campos obrigatórios.');
                     return;
                 }
                 
                 const eventData = {
-                    status, date, name: eventType, // name aqui é o Tipo do Evento na tabela Escalas
+                    status, date, name: eventType,
                     department, responsible, mainRole, description: observations,
                     attachmentName: attachment ? attachment.name : existingAttachmentName,
                     musicDetails: department === 'MINISTERIO DA MUSICA' ? {
@@ -1505,7 +1532,6 @@ const LoginPage = ({ onLogin, initialDepartments = [] }) => {
                     } : null
                 };
 
-                // Se tiver anexo novo, processa
                 if (attachment) {
                     try {
                         eventData.fileData = await fileToBase64(attachment);
@@ -1514,10 +1540,9 @@ const LoginPage = ({ onLogin, initialDepartments = [] }) => {
                     } catch(err) { console.error("Erro anexo", err); }
                 }
 
-                // Chama API
                 if (isEditing) {
-                    // Adicione updateScale no api se não tiver, ou use addEvent com ID
-                    alert('Edição enviada!'); 
+                    // Implementar api.updateEvent se necessário
+                    alert('Edição enviada (simulação)!'); 
                     setEditingEventId(null);
                     setView('editScales');
                 } else {
@@ -1571,38 +1596,48 @@ const LoginPage = ({ onLogin, initialDepartments = [] }) => {
                                         <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Tipo do Evento *</label>
                                         <select value={eventType} onChange={e => setEventType(e.target.value)} className="border rounded-md shadow w-full dark:bg-gray-700 dark:text-white" required>
                                             <option value="" disabled>Selecione...</option>
-                                            {eventTypeOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                                            {eventTypeOptions.map((opt, i) => <option key={i} value={opt}>{opt}</option>)}
                                         </select>
                                     </div>
                                 </div>
-                                
-                                {/* ... (Restante dos campos: Responsável, Função, Música, Anexo) ... */}
-                                {/* Mantenha os campos de música e observação iguais, apenas certifique-se que o input file tenha id="attachment_scale" para não conflitar */}
                                 
                                 <div>
                                     <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Nome do Responsável *</label>
                                     <input type="text" value={responsible} onChange={e => setResponsible(e.target.value)} className="shadow border rounded-md w-full py-2 px-3 dark:bg-gray-700 dark:text-white" required />
                                 </div>
-                                 <div>
+                                
+                                {/* CAMPO FUNÇÃO PRINCIPAL DINÂMICO */}
+                                <div>
                                     <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Função Principal</label>
                                     <select value={mainRole} onChange={e => setMainRole(e.target.value)} className="border rounded-md shadow w-full dark:bg-gray-700 dark:text-white">
                                         <option value="">Nenhuma</option>
-                                        {roleOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                                        {roleOptions.map((opt, i) => <option key={i} value={opt}>{opt}</option>)}
                                     </select>
+                                    {roleOptions.length === 0 && <p className="text-xs text-red-500 mt-1">Nenhuma função cadastrada na tabela EVENTOS.</p>}
                                 </div>
 
-                                {/* Bloco de Música (Condicional) - Simplificado para o exemplo, mantenha o seu completo */}
                                 {isMusica && (
                                     <div className="p-4 bg-gray-50 dark:bg-gray-700/30 rounded border">
                                         <h3 className="font-bold mb-2 dark:text-gray-200">Música</h3>
                                         <input type="text" placeholder="Cantor" value={nomeCantor} onChange={e => setNomeCantor(e.target.value)} className="w-full mb-2 p-2 border rounded dark:bg-gray-700 dark:text-white" />
-                                        {/* ... outros campos de musica ... */}
+                                        {/* (Outros campos de música omitidos para brevidade, mantenha se necessário) */}
                                     </div>
                                 )}
 
                                 <div>
                                     <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Observações</label>
                                     <textarea value={observations} onChange={e => setObservations(e.target.value)} rows="3" className="shadow border rounded-md w-full py-2 px-3 dark:bg-gray-700 dark:text-white"></textarea>
+                                </div>
+                                
+                                <div>
+                                    <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Anexo</label>
+                                    <div className="flex items-center gap-2">
+                                        <label className="cursor-pointer bg-gray-100 px-4 py-2 rounded border text-sm font-semibold hover:bg-gray-200 transition">
+                                            Escolher Arquivo
+                                            <input type="file" id="attachment_scale" className="hidden" onChange={e => setAttachment(e.target.files[0])} />
+                                        </label>
+                                        <span className="text-xs text-gray-500">{attachment ? attachment.name : 'Nenhum'}</span>
+                                    </div>
                                 </div>
 
                                 <div className="pt-4">
@@ -1618,19 +1653,21 @@ const LoginPage = ({ onLogin, initialDepartments = [] }) => {
         };
         
 
-        const EditScalesPage = ({ setView, mockScales, setMockScales, setEditingEventId, mockEvents }) => {
-            // Filtros Iniciais
+        const EditScalesPage = ({ setView, mockScales, setMockScales, setEditingEventId, departmentsList = [], eventTypesList = [], statusList = [] }) => {
             const [filters, setFilters] = useState({ date: '', status: 'Todos', eventType: 'Todos', department: 'Todos' });
+            const escalasData = Array.isArray(mockScales) ? mockScales : [];
 
             // Garante array
             const scalesData = Array.isArray(mockScales) ? mockScales : [];
             const eventsData = Array.isArray(mockEvents) ? mockEvents : [];
+            
 
             // --- CORREÇÃO: Popula Dropdowns com dados REAIS ---
             const uniqueDepartments = [...new Set(scalesData.map(s => s.departamento).filter(Boolean))];
             const uniqueStatus = [...new Set(scalesData.map(s => s.status).filter(Boolean))];
+           
             // Pega tipos de eventos da tabela EVENTOS (passada via mockEvents no App)
-            const uniqueEventTypes = [...new Set(eventsData.map(e => e.name || e.eventType).filter(Boolean))];
+            const uniqueEventTypes = eventTypesList.map(t => (typeof t === 'object' ? t.nome : t)).filter(Boolean);
 
             const handleFilterChange = (e) => setFilters({ ...filters, [e.target.name]: e.target.value });
             const handleClearFilters = () => setFilters({ date: '', status: 'Todos', eventType: 'Todos', department: 'Todos' });
@@ -2202,6 +2239,8 @@ const LoginPage = ({ onLogin, initialDepartments = [] }) => {
             }, [filters, mockEvents]);
 
             const calendarGrid = useMemo(() => {
+                const dayOfWeek = new Date(year, month, dayCounter).getDay();
+                const isHighlightDay = [0, 3, 6].includes(dayOfWeek);
                 const year = currentDate.getFullYear(); const month = currentDate.getMonth();
                 const firstDayOfMonth = new Date(year, month, 1).getDay();
                 const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -2269,7 +2308,7 @@ const LoginPage = ({ onLogin, initialDepartments = [] }) => {
                             <div className="grid grid-cols-7 gap-1 text-center text-sm text-gray-500 dark:text-gray-400">
                                 {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(day => <div key={day} className="font-semibold">{day}</div>)}
                                 {calendarGrid.flat().map((cell, index) => (
-                                    <div key={index} className={`h-24 border border-gray-100 dark:border-gray-700 rounded-md p-1 transition-colors duration-200 ${cell.day ? 'hover:bg-gray-50 dark:hover:bg-gray-700/50' : 'bg-gray-50 dark:bg-gray-800/50'} overflow-hidden`}>
+                                    <div key={index} className={`h-24 border border-gray-100 dark:border-gray-700 rounded-md p-1 transition-colors duration-200 ${isHighlightDay ? 'bg-violet-50 dark:bg-violet-900/20 border-violet-100' : 'bg-white'} overflow-hidden`}>
                                         {cell.day && <span className="font-bold text-gray-700 dark:text-gray-300 block mb-1">{cell.day}</span>}
                                         <div className="overflow-y-auto max-h-16 space-y-1 custom-scrollbar">
                                             {cell.events && cell.events.map(event => (
@@ -3269,7 +3308,6 @@ const LoginPage = ({ onLogin, initialDepartments = [] }) => {
 
 // (20) --- Componente Principal ---
         function App() {
-            // --- ESTADOS INICIAIS LIMPOS (SEM MOCKS) ---
             const [currentUser, setCurrentUser] = useState(null);
             const [view, setView] = useState('login'); 
             const [selectedEventId, setSelectedEventId] = useState(null);
@@ -3277,16 +3315,16 @@ const LoginPage = ({ onLogin, initialDepartments = [] }) => {
             const [editingCalendarEvent, setEditingCalendarEvent] = useState(null);
             const [loading, setLoading] = useState(true);
             
-            // Dados do Banco (Começam vazios)
-            const [mockEvents, setMockEvents] = useState([]); // Tabela CALENDÁRIO
-            const [mockScales, setMockScales] = useState([]); // Tabela ESCALAS
-            const [mockDepartments, setMockDepartments] = useState({}); // Tabela DEPARTAMENTOS
-            const [mockBranches, setMockBranches] = useState([]); // Tabela FILIAL
-            const [mockEventTypes, setMockEventTypes] = useState([]); // Tabela EVENTOS (Tipos)
-            
-            // Outros
+            // --- DADOS REAIS ---
+            const [mockEvents, setMockEvents] = useState([]); // CALENDÁRIO
+            const [mockScales, setMockScales] = useState([]); // ESCALAS
+            const [mockDepartments, setMockDepartments] = useState({}); // DEPARTAMENTOS
+            const [mockBranches, setMockBranches] = useState([]); // FILIAIS
+            const [mockEventTypes, setMockEventTypes] = useState([]); // TIPOS EVENTOS
+            const [mockRoles, setMockRoles] = useState([]); // FUNÇÕES
+            const [mockStatus, setMockStatus] = useState([]); // STATUS ESCALAS
+
             const [assignments, setAssignments] = useState({});
-            const [managingTable, setManagingTable] = useState(null);
             const [theme, setTheme] = useState('light');
             const [showNotifications, setShowNotifications] = useState(false); 
 
@@ -3295,49 +3333,39 @@ const LoginPage = ({ onLogin, initialDepartments = [] }) => {
                 else document.documentElement.classList.remove('dark');
             }, [theme]);
 
-            // --- CARREGAMENTO DE DADOS REAIS ---
-            useEffect(() => {
-                const loadData = async () => {
-                    try {
-                        const data = await api.getInitialData();
-                        if (data) {
-                            // Preenche estados com dados do Backend
-                            if (data.eventos) setMockEvents(data.eventos);
-                            if (data.escalas) setMockScales(data.escalas);
-                            if (data.filiais) setMockBranches(data.filiais);
-                            if (data.tiposEventos) setMockEventTypes(data.tiposEventos); // Lista de tipos
-                            
-                            if (data.departamentos) {
-                                const deptsObj = {};
-                                // Supondo que venha array de strings ["Depto A", "Depto B"]
-                                data.departamentos.forEach(d => deptsObj[d] = { DE_NOME_DEPARTAMENTO: d });
-                                setMockDepartments(deptsObj);
-                            }
-                            
-                            if (data.currentUser && data.currentUser.id !== 'guest') {
-                                setCurrentUser(data.currentUser);
-                                setView('dashboard');
-                            }
+            // CARREGAMENTO INICIAL
+            const loadData = async () => {
+                try {
+                    const data = await api.getInitialData();
+                    if (data) {
+                        if (data.eventos) setMockEvents(data.eventos);
+                        if (data.escalas) setMockScales(data.escalas);
+                        if (data.filiais) setMockBranches(data.filiais);
+                        if (data.tiposEventos) setMockEventTypes(data.tiposEventos);
+                        if (data.funcoes) setMockRoles(data.funcoes);
+                        if (data.statusEscalas) setMockStatus(data.statusEscalas);
+                        
+                        if (data.departamentos) {
+                            const deptsObj = {};
+                            data.departamentos.forEach(d => deptsObj[d] = { DE_NOME_DEPARTAMENTO: d });
+                            setMockDepartments(deptsObj);
                         }
-                    } catch (error) {
-                        console.error("Erro ao carregar dados:", error);
-                    } finally {
-                        setLoading(false);
+                        
+                        if (data.currentUser && data.currentUser.id !== 'guest') {
+                            setCurrentUser(data.currentUser);
+                            setView('dashboard');
+                        }
                     }
-                };
-                loadData();
-            }, []);
+                } catch (error) { console.error(error); } finally { setLoading(false); }
+            };
+
+            useEffect(() => { loadData(); }, []);
             
-            // ... (Configuração do Manifesto PWA mantida) ...
+            // ... (Manifesto PWA mantido) ...
 
             const refreshData = async () => {
                 setLoading(true);
-                try {
-                    const data = await api.getInitialData();
-                    if (data.eventos) setMockEvents(data.eventos);
-                    if (data.escalas) setMockScales(data.escalas);
-                    setView('dashboard');
-                } catch (e) { console.error(e); } finally { setLoading(false); }
+                await loadData(); // Reusa a função loadData para garantir tudo atualizado
             };
 
             const handleEditCalendarEvent = (event) => {
@@ -3346,59 +3374,74 @@ const LoginPage = ({ onLogin, initialDepartments = [] }) => {
             };
 
             const handleLogin = (userData) => { setCurrentUser(userData); setView('dashboard'); };
-            const handleLogout = () => { 
-                setLoading(true); 
-                setTimeout(() => { setCurrentUser(null); setView('login'); setLoading(false); }, 500); 
-            };
+            const handleLogout = () => { setLoading(true); setTimeout(() => { setCurrentUser(null); setView('login'); setLoading(false); }, 500); };
             const handleUpdateUser = (u) => setCurrentUser(u);
-            const handleUpdatePassword = () => alert("Solicite ao administrador.");
 
             if (loading) return <div className="min-h-screen flex justify-center items-center"><div className="loader"></div></div>;
 
             const renderView = () => {
                 if (!currentUser) return <LoginPage onLogin={handleLogin} initialDepartments={Object.keys(mockDepartments)} />;
                 
+                // PREPARAÇÃO DE LISTAS PARA PASSAR AOS FILHOS
+                const deptList = Object.keys(mockDepartments);
+                
                 switch (view) {
                     case 'dashboard': 
                         return <DashboardPage 
                             currentUser={currentUser} setView={setView} setEventId={setSelectedEventId} 
-                            mockEvents={mockEvents} 
+                            mockEvents={mockEvents} // Passa lista do CALENDÁRIO
                             onOpenNotifications={() => setShowNotifications(true)} 
                             onEditEvent={handleEditCalendarEvent} 
                         />;
+
                     case 'addCalendarEvent':
                         return <AddCalendarEventPage 
-                            setView={setView} onSaveSuccess={refreshData} branches={mockBranches} 
+                            setView={setView} onSaveSuccess={refreshData} 
+                            branches={mockBranches} 
                             eventTypes={mockEventTypes} 
-                            departments={Object.keys(mockDepartments)} 
+                            departments={deptList} 
                             editingEvent={editingCalendarEvent} 
                         />;
+
                     case 'addEvent': 
                         return <AddEventPage 
                             setView={setView} 
-                            setMockEvents={setMockEvents} // (Opcional se não usar no componente)
+                            setMockEvents={setMockEvents} 
                             editingEventId={editingEventId} 
                             setEditingEventId={setEditingEventId}
-                            // --- AQUI CONECTAMOS OS DADOS REAIS ---
+                            // --- PASSANDO DADOS REAIS ---
                             departments={mockDepartments}
                             eventTypes={mockEventTypes} 
+                            roles={mockRoles} // Passa funções reais
                         />;
+
                     case 'editScales': 
                         return <EditScalesPage 
                             setView={setView} 
-                            mockScales={mockScales} // Passa a lista de escalas
+                            mockScales={mockScales} // Lista de Escalas
                             setMockScales={setMockScales} 
                             setEditingEventId={setEditingEventId}
-                            mockEvents={mockEvents} // Para filtros, se necessário 
+                            // --- PASSANDO DADOS PARA FILTROS ---
+                            departmentsList={deptList}
+                            eventTypesList={mockEventTypes}
+                            statusList={mockStatus}
                         />;
-                    // ... (Outros cases: generateRoteiro, eventDetail, calendar, profile, myScales, departmentData, settings, manageTable - mantidos iguais) ...
+                    
+                    case 'calendar': 
+                        return <CalendarPage 
+                            currentUser={currentUser} setView={setView} setEventId={setSelectedEventId} 
+                            mockEvents={mockEvents} 
+                            mockDepartments={mockDepartments} 
+                            eventTypes={mockEventTypes} // Passa Tipos para filtro
+                        />;
+
+                    // ... (Outros cases mantidos: generateRoteiro, eventDetail, profile, etc) ...
                     case 'generateRoteiro': return <GenerateRoteiroPage setView={setView} mockEvents={mockEvents} mockDepartments={mockDepartments} />;
                     case 'eventDetail': return <EventDetailPage currentUser={currentUser} eventId={selectedEventId} setView={setView} assignments={assignments} setAssignments={setAssignments} mockEvents={mockEvents} mockScales={mockScales} />;
-                    case 'calendar': return <CalendarPage currentUser={currentUser} setView={setView} setEventId={setSelectedEventId} mockEvents={mockEvents} mockDepartments={mockDepartments} eventTypes={mockEventTypes} />;
                     case 'profile': return <ProfilePage currentUser={currentUser} onLogout={handleLogout} onUpdateUser={handleUpdateUser} setView={setView} />;
-                    case 'myScales': return <MyScalesPage currentUser={currentUser} mockEvents={mockEvents} setView={setView} />;
+                    case 'myScales': return <MyScalesPage currentUser={currentUser} mockEvents={mockScales} setView={setView} />; // Atenção: MyScales vê Escalas
                     case 'departmentData': return <DepartmentDataPage setView={setView} />;
-                    case 'settings': return <SettingsPage currentUser={currentUser} setView={setView} setManagingTable={setManagingTable} theme={theme} setTheme={setTheme} onUpdatePassword={handleUpdatePassword} />;
+                    case 'settings': return <SettingsPage currentUser={currentUser} setView={setView} setManagingTable={setManagingTable} theme={theme} setTheme={setTheme} onUpdatePassword={() => {}} />;
                     case 'manageTable': return <ManageTablePage tableName={managingTable} setView={setView} mockEvents={mockEvents} currentUser={currentUser} setMockEvents={setMockEvents} mockDepartments={mockDepartments} setMockDepartments={setMockDepartments} mockAccess={mockAccess} setMockAccess={setMockAccess} />;
                     
                     default: return <DashboardPage currentUser={currentUser} setView={setView} setEventId={setSelectedEventId} mockEvents={mockEvents} onOpenNotifications={() => setShowNotifications(true)} onEditEvent={handleEditCalendarEvent} />;
