@@ -214,14 +214,17 @@ function processarAcao(action, payload) {
         return uploadArquivoParaDrive(payload);
 
       default:
-        return { status: 'error', message: "Ação desconhecida: " + action };
+        return { status: 'error', message: "Ação desconhecida" };
 
       case 'getInitialData':
         return {
-           eventos: getItensCalendario(), // <--- TEM QUE CHAMAR A FUNÇÃO NOVA
-           departamentos: getDepartamentos(),
-           escalas: getTodasAsEscalas(),
-           filiais: getFiliais(),
+          eventos: getItensCalendario(), // Tabela CALENDÁRIO
+           escalas: getTodasAsEscalas(),  // Tabela ESCALAS
+           departamentos: getDepartamentos(), // Tabela DEPARTAMENTOS (Lista de Nomes)
+           filiais: getFiliais(), // Tabela FILIAL
+           tiposEventos: getEventos(), // Tabela EVENTOS (Lista de Nomes)
+           funcoes: getFuncoesEventos(), // NOVA: Tabela EVENTOS (Coluna EV_FUNCAO)
+           statusEscalas: getStatusEscalas(), // NOVA: Tabela ESCALAS (Coluna ES_STATUS)
            mural: getMuralPosts(),
            currentUser: { name: 'Visitante', id: 'guest' }
         };
@@ -231,6 +234,36 @@ function processarAcao(action, payload) {
     console.error("Erro em processarAcao [" + action + "]: " + e.message);
     return { status: 'error', message: e.toString() };
   }
+}
+
+function getFuncoesEventos() {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("EVENTOS");
+    if (!sheet || sheet.getLastRow() < 2) return [];
+
+    // ATENÇÃO: Ajuste o número '3' abaixo para o número da coluna onde estão as Funções.
+    // Ex: Se EV_FUNCAO for a Coluna C, use 3. Se for D, use 4.
+    // Se você quer usar EV_NOME_EVENTO (Coluna B) como função, use 2.
+    const colunaFuncao = 4; 
+
+    const data = sheet.getRange(2, colunaFuncao, sheet.getLastRow() - 1, 1).getValues();
+    
+    // Retorna lista limpa, sem vazios e sem duplicatas
+    const listaLimpa = data.flat().filter(item => item && item !== "");
+    return [...new Set(listaLimpa)]; 
+  } catch (e) {
+    console.error("Erro ao buscar funções: " + e.message);
+    return [];
+  }
+}
+
+function getStatusEscalas() {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("ESCALAS");
+    if (!sheet) return [];
+    const data = sheet.getRange("B2:B" + sheet.getLastRow()).getValues().flat();
+    return [...new Set(data)].filter(String); // Retorna únicos
+  } catch (e) { return ["Aberta", "Fechada", "Confirmada"]; }
 }
 
 // ===============================================================
