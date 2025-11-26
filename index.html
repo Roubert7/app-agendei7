@@ -1394,9 +1394,7 @@ const LoginPage = ({ onLogin, initialDepartments = [] }) => {
                                         <select className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white"
                                             value={formData.eventType} onChange={e => setFormData({...formData, eventType: e.target.value})}>
                                             <option value="">Selecione...</option>
-                                            {eventTypes.map((t, i) => {
-                                                const label = typeof t === 'object' ? t.nome : t;
-                                                return <option key={i} value={label}>{label}</option>;
+                                            {eventTypes.map((t, i) => <option key={i} value={t}>{t}</option>)}
                                             })}
                                         </select>
                                     </div>
@@ -1495,7 +1493,7 @@ const LoginPage = ({ onLogin, initialDepartments = [] }) => {
         };
 
         // --- 3. COMPONENTE EXISTENTE: ADICIONAR AGENDAMENTO (ESCALA) ---
-        const AddEventPage = ({ setView, setMockEvents, mockEvents, editingEventId, setEditingEventId }) => {
+          const AddEventPage = ({ setView, setMockEvents, mockEvents, editingEventId, setEditingEventId, mockDepartments }) => {
             const [date, setDate] = useState('');
             const [status, setStatus] = useState('Aberta');
             const [department, setDepartment] = useState('');
@@ -1505,6 +1503,8 @@ const LoginPage = ({ onLogin, initialDepartments = [] }) => {
             const [observations, setObservations] = useState('');
             const [attachment, setAttachment] = useState(null);
             const [showSuccess, setShowSuccess] = useState(false);
+            const departmentOptions = Object.keys(mockDepartments);
+            const eventTypeOptions = [...new Set(mockEvents.map(e => e.name || e.eventType).filter(Boolean))];
             
             const [nomeCantor, setNomeCantor] = useState('');
             const [integrante1, setIntegrante1] = useState('');
@@ -1516,7 +1516,6 @@ const LoginPage = ({ onLogin, initialDepartments = [] }) => {
             const [musica3, setMusica3] = useState('');
             const [musica4, setMusica4] = useState('');
             const [existingAttachmentName, setExistingAttachmentName] = useState('');
-
             const departmentOptions = ALL_DEPARTMENTS_NAMES;
             const eventTypeOptions = ['Culto', 'CULTO DE SÁBADO', 'Ensaio', 'Ação Social', 'Reunião', 'Vigília'];
             const statusOptions = ['Aberta', 'Fechada', 'Em Andamento', 'Planejada'];
@@ -1709,64 +1708,77 @@ const LoginPage = ({ onLogin, initialDepartments = [] }) => {
         };
         
 
-        const EditScalesPage = ({ setView, mockScales, setMockScales, setEditingEventId }) => {
-            const initialFilters = {
-                date: '', status: 'Todos', eventType: 'Todos', department: 'Todos'
-            };
-            const [filters, setFilters] = useState(initialFilters);
+        const EditScalesPage = ({ setView, mockScales, setMockScales, setEditingEventId, mockEvents }) => {
+            // Filtros Iniciais
+            const [filters, setFilters] = useState({ date: '', status: 'Todos', eventType: 'Todos', department: 'Todos' });
 
-            // Usa mockScales (Tabela ESCALAS) em vez de mockEvents
-            const escalasParaExibir = Array.isArray(mockScales) ? mockScales : [];
+            // Garante array
+            const scalesData = Array.isArray(mockScales) ? mockScales : [];
+            const eventsData = Array.isArray(mockEvents) ? mockEvents : [];
 
-            const filterOptions = useMemo(() => {
-                const departments = [...new Set(escalasParaExibir.map(e => e.departamento))];
-                const statuses = [...new Set(escalasParaExibir.map(e => e.status))];
-                const eventTypes = [...new Set(escalasParaExibir.map(e => e.tipoEvento))];
-                return { departments, statuses, eventTypes };
-            }, [escalasParaExibir]);
-
-            const filteredScales = useMemo(() => {
-                return escalasParaExibir.filter(scale => {
-                    // Normaliza data
-                    let scaleDate = scale.dataEvento;
-                    if(scaleDate instanceof Date) scaleDate = scaleDate.toISOString().split('T')[0];
-                    
-                    if (filters.date && scaleDate !== filters.date) return false;
-                    if (filters.status !== 'Todos' && scale.status !== filters.status) return false;
-                    if (filters.eventType !== 'Todos' && scale.tipoEvento !== filters.eventType) return false;
-                    if (filters.department !== 'Todos' && scale.departamento !== filters.department) return false;
-                    return true;
-                });
-            }, [filters, escalasParaExibir]);
+            // --- CORREÇÃO: Popula Dropdowns com dados REAIS ---
+            const uniqueDepartments = [...new Set(scalesData.map(s => s.departamento).filter(Boolean))];
+            const uniqueStatus = [...new Set(scalesData.map(s => s.status).filter(Boolean))];
+            // Pega tipos de eventos da tabela EVENTOS (passada via mockEvents no App)
+            const uniqueEventTypes = [...new Set(eventsData.map(e => e.name || e.eventType).filter(Boolean))];
 
             const handleFilterChange = (e) => setFilters({ ...filters, [e.target.name]: e.target.value });
+            const handleClearFilters = () => setFilters({ date: '', status: 'Todos', eventType: 'Todos', department: 'Todos' });
+
+            const filteredScales = useMemo(() => {
+                return scalesData.filter(scale => {
+                    let sDate = scale.dataEvento;
+                    if(sDate instanceof Date) sDate = sDate.toISOString().split('T')[0];
+                    
+                    if (filters.date && sDate !== filters.date) return false;
+                    if (filters.status !== 'Todos' && scale.status !== filters.status) return false;
+                    if (filters.department !== 'Todos' && scale.departamento !== filters.department) return false;
+                    if (filters.eventType !== 'Todos' && scale.tipoEvento !== filters.eventType) return false;
+                    return true;
+                });
+            }, [filters, scalesData]);
 
             return (
                 <div>
                     <Header title="Editar Escalas" onBack={() => setView('dashboard')} />
                     <main className="p-4 pb-20 max-w-4xl mx-auto">
                         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-6">
-                            <h3 className="font-bold text-gray-800 dark:text-gray-200 mb-3">Filtros</h3>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                                <input type="date" name="date" onChange={handleFilterChange} className="border rounded p-2 dark:bg-gray-700 dark:text-white"/>
-                                <select name="department" onChange={handleFilterChange} className="border rounded p-2 dark:bg-gray-700 dark:text-white">
-                                    <option value="Todos">Todos Departamentos</option>
-                                    {filterOptions.departments.map(d => <option key={d} value={d}>{d}</option>)}
+                            <div className="flex justify-between mb-3">
+                                <h3 className="font-bold text-gray-800 dark:text-gray-200">Filtros</h3>
+                                <button onClick={handleClearFilters} className="text-violet-600 text-xs font-bold">Limpar</button>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
+                                <input type="date" name="date" value={filters.date} onChange={handleFilterChange} className="border rounded p-2 dark:bg-gray-700 dark:text-white"/>
+                                
+                                <select name="department" value={filters.department} onChange={handleFilterChange} className="border rounded p-2 dark:bg-gray-700 dark:text-white">
+                                    <option value="Todos">Todos Deptos</option>
+                                    {uniqueDepartments.map(d => <option key={d} value={d}>{d}</option>)}
+                                </select>
+
+                                <select name="status" value={filters.status} onChange={handleFilterChange} className="border rounded p-2 dark:bg-gray-700 dark:text-white">
+                                    <option value="Todos">Todos Status</option>
+                                    {uniqueStatus.map(s => <option key={s} value={s}>{s}</option>)}
+                                </select>
+
+                                <select name="eventType" value={filters.eventType} onChange={handleFilterChange} className="border rounded p-2 dark:bg-gray-700 dark:text-white">
+                                    <option value="Todos">Todos Eventos</option>
+                                    {uniqueEventTypes.map(e => <option key={e} value={e}>{e}</option>)}
                                 </select>
                             </div>
                         </div>
 
                         <div className="space-y-3">
-                            {filteredScales.map(scale => (
-                                <div key={scale.id} className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border-l-4 border-blue-500">
-                                    <div className="flex justify-between">
-                                        <div>
-                                            <p className="text-xs font-bold text-blue-600">{scale.departamento}</p>
-                                            <h4 className="font-bold text-gray-800 dark:text-white">{scale.nomePessoa}</h4>
-                                            <p className="text-sm text-gray-500">{scale.funcao} - {new Date(scale.dataEvento).toLocaleDateString('pt-BR')}</p>
-                                        </div>
-                                        <button className="text-gray-400 hover:text-blue-600"><svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.536l12.232-12.232z" /></svg></button>
+                            {filteredScales.length === 0 ? <p className="text-center text-gray-500">Nenhuma escala encontrada.</p> : filteredScales.map(scale => (
+                                <div key={scale.id} className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border-l-4 border-violet-500 flex justify-between items-center">
+                                    <div>
+                                        <p className="text-xs font-bold text-violet-600">{scale.departamento}</p>
+                                        <h4 className="font-bold text-gray-800 dark:text-white">{scale.nomePessoa}</h4>
+                                        <p className="text-sm text-gray-500">{scale.funcao} • {scale.tipoEvento}</p>
+                                        <p className="text-xs text-gray-400 mt-1">{new Date(scale.dataEvento).toLocaleDateString('pt-BR')}</p>
                                     </div>
+                                    <button onClick={() => { setEditingEventId(scale.id); setView('addEvent'); }} className="p-2 text-gray-400 hover:text-violet-600">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.536l12.232-12.232z" /></svg>
+                                    </button>
                                 </div>
                             ))}
                         </div>
@@ -1775,20 +1787,91 @@ const LoginPage = ({ onLogin, initialDepartments = [] }) => {
             );
         };
 
+        // Componente de Linha da Tabela (Definido FORA para não perder foco)
+        const RoteiroRow = ({ item, departments, onChange, onRemove, getResponsibleText }) => {
+            return (
+                <tr className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                    <td className="px-2 py-1 border-r dark:border-gray-700">
+                        <input type="text" value={item.time} onChange={(e) => onChange(item.id, 'time', e.target.value)} className="w-full bg-transparent outline-none text-center font-mono font-bold text-gray-700 dark:text-gray-300" />
+                    </td>
+                    <td className="px-2 py-1 border-r dark:border-gray-700">
+                        {/* Atividade: Dropdown ou Texto Livre */}
+                        <input 
+                            list={`act-list-${item.id}`} 
+                            type="text" 
+                            value={item.activity} 
+                            onChange={(e) => onChange(item.id, 'activity', e.target.value)} 
+                            className="w-full bg-transparent outline-none" 
+                            placeholder="..." 
+                        />
+                        <datalist id={`act-list-${item.id}`}>
+                            <option value="Música ambiente" />
+                            <option value="Boas-vindas" />
+                            <option value="Oração" />
+                            <option value="Louvor" />
+                            <option value="Mensagem" />
+                        </datalist>
+                    </td>
+                    <td className="px-2 py-1 border-r dark:border-gray-700">
+                        <select value={item.dept} onChange={(e) => onChange(item.id, 'dept', e.target.value)} className="w-full bg-transparent outline-none text-xs border-b border-transparent focus:border-violet-500">
+                            <option value="">Selecione...</option>
+                            {departments.map(d => <option key={d} value={d}>{d}</option>)}
+                        </select>
+                    </td>
+                    <td className="px-2 py-1 border-r dark:border-gray-700">
+                        {/* Responsável: Auto ou Manual */}
+                        <input type="text" value={item.responsible || getResponsibleText(item.dept)} onChange={(e) => onChange(item.id, 'responsible', e.target.value)} className="w-full bg-transparent outline-none text-xs text-gray-600 dark:text-gray-400" placeholder="Auto" />
+                    </td>
+                    <td className="px-2 py-1">
+                        <input type="text" value={item.detail} onChange={(e) => onChange(item.id, 'detail', e.target.value)} className="w-full bg-transparent outline-none text-xs italic" placeholder="Músicas, obs..." />
+                    </td>
+                    <td className="px-1 py-1 text-center">
+                        <button onClick={() => onRemove(item.id)} className="text-red-400 hover:text-red-600 font-bold">×</button>
+                    </td>
+                </tr>
+            );
+        };
+
         const GenerateRoteiroPage = ({ setView, mockEvents, mockDepartments }) => {
             const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
             const [roteiroItems, setRoteiroItems] = useState([]);
+            const [notificationModalOpen, setNotificationModalOpen] = useState(false);
+            const [selectedDeptForNotification, setSelectedDeptForNotification] = useState('');
             
-            // Mock inicial inteligente (poderia vir do banco futuramente)
+            const departmentList = Object.keys(mockDepartments);
+
+            // Formata data para Label Bonita
+            const dateLabel = new Date(selectedDate + 'T00:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).toUpperCase();
+
+            // Verifica se é sábado
+            const isSaturday = (dateString) => {
+                const date = new Date(dateString + 'T00:00:00');
+                return date.getDay() === 6; 
+            };
+
+            const departmentStatus = useMemo(() => {
+                const eventsOnDate = mockEvents.filter(e => e.date === selectedDate);
+                const priorityDepts = ['MINISTERIO DA MUSICA', 'MINISTERIO INFANTIL', 'DIACONATO', 'Sonoplastia'];
+                return priorityDepts.map(deptName => {
+                    const hasEvent = eventsOnDate.some(e => e.department === deptName || e.branch === deptName);
+                    return { name: deptName, isScheduled: hasEvent };
+                });
+            }, [selectedDate, mockEvents]);
+
             useEffect(() => {
-                const initialData = [
-                    { id: 1, section: 'ES', time: '08:50', activity: 'Música ambiente', dept: 'Sonoplastia', detail: '', manualDetail: '[FIXO]' },
-                    { id: 2, section: 'ES', time: '09:00', activity: 'Boas-vindas e oração', dept: 'Equipe de Louvor', detail: '', manualDetail: '' },
-                    { id: 3, section: 'ES', time: '09:10', activity: 'Carta Missionária', dept: 'Escola Sabatina', detail: '', manualDetail: '' },
-                    { id: 4, section: 'CD', time: '10:30', activity: 'Entrada', dept: 'Diaconato', detail: '', manualDetail: '' },
-                    { id: 5, section: 'CD', time: '10:40', activity: 'Louvor', dept: 'Ministerio de Louvor', detail: '', manualDetail: '' },
-                ];
-                setRoteiroItems(initialData);
+                // Reinicia itens ao trocar data
+                if (isSaturday(selectedDate)) {
+                    setRoteiroItems([
+                        { id: 1, section: 'ES', time: '08:50', activity: 'Música ambiente', dept: 'Sonoplastia', responsible: '[FIXO]', detail: '' },
+                        { id: 2, section: 'ES', time: '09:00', activity: 'Abertura', dept: 'Escola Sabatina', responsible: '', detail: '' },
+                        { id: 3, section: 'CD', time: '10:40', activity: 'Doxologia', dept: 'Ministerio de Louvor', responsible: '', detail: '' },
+                    ]);
+                } else {
+                    setRoteiroItems([
+                        { id: 10, section: 'GERAL', time: '19:15', activity: 'Música ambiente', dept: 'Sonoplastia', responsible: '[FIXO]', detail: '' },
+                        { id: 11, section: 'GERAL', time: '19:30', activity: 'Boas Vindas', dept: 'DIACONATO', responsible: '', detail: '' },
+                    ]);
+                }
             }, [selectedDate]);
 
             const handleItemChange = (id, field, value) => {
@@ -1797,13 +1880,7 @@ const LoginPage = ({ onLogin, initialDepartments = [] }) => {
 
             const addNewLine = (section) => {
                 const newItem = { 
-                    id: Date.now(), 
-                    section, 
-                    time: '--:--', 
-                    activity: 'Nova Atividade', 
-                    dept: '', 
-                    detail: '', 
-                    manualDetail: '' 
+                    id: Date.now(), section, time: '--:--', activity: '', dept: '', responsible: '', detail: '' 
                 };
                 setRoteiroItems([...roteiroItems, newItem]);
             };
@@ -1812,103 +1889,125 @@ const LoginPage = ({ onLogin, initialDepartments = [] }) => {
                 if(confirm("Remover linha?")) setRoteiroItems(roteiroItems.filter(i => i.id !== id));
             };
 
-            // Lógica de Responsável Automático (Simulada)
             const getResponsibleText = (dept) => {
-                if (!dept) return '';
-                if (dept.includes('Louvor') || dept.includes('Musica')) return "Equipe Escapada"; // Exemplo
-                if (dept.includes('Infantil')) return "Tia Responsável";
-                return "Líder do Depto";
+                 if (!dept) return '';
+                 if (dept.toUpperCase().includes('LOUVOR') || dept.toUpperCase().includes('MUSICA')) return "Equipe de Louvor";
+                 return "Líder do Depto";
             };
 
-            const handlePrintPDF = () => window.print(); // Usa o print nativo do navegador (salvar como PDF)
+            const handleOpenNotification = (deptName) => {
+                setSelectedDeptForNotification(deptName);
+                setNotificationModalOpen(true);
+            };
+
+            const handlePrintPDF = () => window.print();
 
             const handleExportXLS = () => {
-                let csvContent = "data:text/csv;charset=utf-8,Hora,Atividade,Departamento,Detalhe\n";
+                let csvContent = "data:text/csv;charset=utf-8,Hora,Atividade,Departamento,Responsavel,Detalhe\n";
                 roteiroItems.forEach(row => {
-                    csvContent += `${row.time},${row.activity},${row.dept},${row.manualDetail}\n`;
+                    csvContent += `${row.time},${row.activity},${row.dept},${row.responsible},${row.detail}\n`;
                 });
                 const encodedUri = encodeURI(csvContent);
                 const link = document.createElement("a");
                 link.setAttribute("href", encodedUri);
-                link.setAttribute("download", "roteiro_agendei7.csv");
+                link.setAttribute("download", `roteiro_${selectedDate}.csv`);
                 document.body.appendChild(link);
                 link.click();
             };
 
-            const RoteiroTable = ({ items, title, section }) => (
-                <div className="mb-6 bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
-                    <div className="bg-gray-200 dark:bg-gray-700 px-4 py-2 font-bold text-gray-700 dark:text-gray-200 flex justify-between items-center">
-                        <span>{title}</span>
-                        <button onClick={() => addNewLine(section)} className="text-xs bg-violet-600 text-white px-2 py-1 rounded hover:bg-violet-700">+ Linha</button>
+            const renderTable = (title, section, colorClass) => (
+                <div className="mb-6 bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden border dark:border-gray-700">
+                    <div className={`px-4 py-2 font-bold flex justify-between items-center ${colorClass}`}>
+                        <span className="uppercase tracking-wide text-sm">{title}</span>
+                        {/* BOTÃO + LINHA COM A COR DO APP */}
+                        <button onClick={() => addNewLine(section)} className="text-xs bg-violet-600 text-white px-3 py-1 rounded hover:bg-violet-700 shadow-sm">+ Linha</button>
                     </div>
                     <div className="overflow-x-auto">
                         <table className="min-w-full text-sm text-left">
-                            <thead className="bg-gray-100 dark:bg-gray-900 text-gray-600 dark:text-gray-400 font-bold">
+                            <thead className="bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-400 font-bold border-b dark:border-gray-700">
                                 <tr>
-                                    <th className="px-3 py-2 w-20">Hora</th>
-                                    <th className="px-3 py-2">Atividade</th>
-                                    <th className="px-3 py-2">Departamento</th>
-                                    <th className="px-3 py-2">Responsável</th>
-                                    <th className="px-3 py-2">Detalhe (Músicas)</th>
+                                    <th className="px-3 py-2 w-20 border-r dark:border-gray-700">Hora</th>
+                                    <th className="px-3 py-2 border-r dark:border-gray-700">Atividade</th>
+                                    <th className="px-3 py-2 border-r dark:border-gray-700">Departamento</th>
+                                    <th className="px-3 py-2 border-r dark:border-gray-700">Responsável</th>
+                                    <th className="px-3 py-2">Detalhe</th>
                                     <th className="px-1 py-2 w-8"></th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                                {items.map((item) => (
-                                    <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                                        <td className="px-2 py-1">
-                                            <input type="text" value={item.time} onChange={(e) => handleItemChange(item.id, 'time', e.target.value)} className="w-full bg-transparent border-b border-transparent focus:border-violet-500 outline-none text-center font-mono" />
-                                        </td>
-                                        <td className="px-2 py-1">
-                                            <input type="text" value={item.activity} onChange={(e) => handleItemChange(item.id, 'activity', e.target.value)} className="w-full bg-transparent border-b border-transparent focus:border-violet-500 outline-none" />
-                                        </td>
-                                        <td className="px-2 py-1">
-                                            <select value={item.dept} onChange={(e) => handleItemChange(item.id, 'dept', e.target.value)} className="w-full bg-transparent border-b border-transparent focus:border-violet-500 outline-none text-xs">
-                                                <option value="">Selecione...</option>
-                                                {Object.keys(mockDepartments).map(d => <option key={d} value={d}>{d}</option>)}
-                                            </select>
-                                        </td>
-                                        <td className="px-2 py-1 text-xs text-gray-500">
-                                            {getResponsibleText(item.dept)}
-                                        </td>
-                                        <td className="px-2 py-1">
-                                            <input type="text" value={item.manualDetail} onChange={(e) => handleItemChange(item.id, 'manualDetail', e.target.value)} className="w-full bg-transparent border-b border-transparent focus:border-violet-500 outline-none text-xs" placeholder="..." />
-                                        </td>
-                                        <td className="px-1 py-1 text-center">
-                                            <button onClick={() => removeLine(item.id)} className="text-red-400 hover:text-red-600 font-bold">×</button>
-                                        </td>
-                                    </tr>
+                                {roteiroItems.filter(i => i.section === section).map(item => (
+                                    <RoteiroRow 
+                                        key={item.id} 
+                                        item={item} 
+                                        departments={departmentList}
+                                        onChange={handleItemChange} 
+                                        onRemove={removeLine}
+                                        getResponsibleText={getResponsibleText}
+                                    />
                                 ))}
                             </tbody>
                         </table>
                     </div>
                 </div>
             );
-
-            const escolaSabatina = roteiroItems.filter(i => i.section === 'ES');
-            const cultoDivino = roteiroItems.filter(i => i.section === 'CD');
-
+            
             return (
                 <div className="print:bg-white">
                     <div className="print:hidden">
                         <Header title="Gerar Roteiro" onBack={() => setView('dashboard')} />
+                        <AdvancedNotificationModal 
+                            isOpen={notificationModalOpen} 
+                            departmentName={selectedDeptForNotification} 
+                            onClose={() => setNotificationModalOpen(false)}
+                            onSend={(data) => { console.log(data); alert('Notificação enviada!'); }}
+                        />
                     </div>
                     
                     <main className="p-4 max-w-5xl mx-auto pb-20 print:p-0">
-                        {/* Filtro de Data (Não sai na impressão) */}
                         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 mb-6 print:hidden">
                             <label className="block text-sm font-bold mb-2 dark:text-gray-200">Data do Evento:</label>
                             <input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} className="border rounded p-2 w-full dark:bg-gray-700 dark:text-white" />
                         </div>
 
-                        {/* Tabelas */}
-                        <div id="roteiro-content">
-                            <h2 className="text-center font-bold text-xl mb-4 hidden print:block">Roteiro - {new Date(selectedDate).toLocaleDateString('pt-BR')}</h2>
-                            <RoteiroTable items={escolaSabatina} title="Escola Sabatina" section="ES" />
-                            <RoteiroTable items={cultoDivino} title="Culto Divino" section="CD" />
+                        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 mb-6 print:hidden">
+                            <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-3">Status dos Departamentos</h3>
+                            <div className="space-y-2">
+                                {departmentStatus.map(dept => (
+                                    <div key={dept.name} className="flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-700/30 rounded border border-gray-100 dark:border-gray-700">
+                                        <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">{dept.name}</span>
+                                        <div className="flex items-center gap-3">
+                                             <span className={`text-xs px-2 py-1 rounded font-bold ${dept.isScheduled ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                                {dept.isScheduled ? 'Recebido' : 'Pendente'}
+                                            </span>
+                                            {!dept.isScheduled && (
+                                                <button onClick={() => handleOpenNotification(dept.name)} className="text-xs border border-red-500 text-red-500 hover:bg-red-50 px-2 py-1 rounded">
+                                                    Notificar
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
 
-                        {/* Botões de Exportação */}
+                        <div id="roteiro-content">
+                            {/* TARJA COM DATA E NOME DO DIA */}
+                            <div className="bg-violet-600 text-white text-center py-3 rounded-t-lg mb-0 shadow-md print:bg-white print:text-black print:shadow-none">
+                                <h1 className="text-xl font-bold uppercase">{dateLabel}</h1>
+                            </div>
+
+                            <div className="mt-4">
+                                {isSaturday(selectedDate) ? (
+                                    <>
+                                        {renderTable("Escola Sabatina", "ES", "bg-yellow-100 text-yellow-800")}
+                                        {renderTable("Culto Divino", "CD", "bg-violet-100 text-violet-800")}
+                                    </>
+                                ) : (
+                                    renderTable("Culto Geral", "GERAL", "bg-blue-100 text-blue-800")
+                                )}
+                            </div>
+                        </div>
+
                         <div className="flex gap-3 mt-6 print:hidden">
                             <button onClick={handlePrintPDF} className="flex-1 bg-red-600 text-white font-bold py-3 rounded-lg hover:bg-red-700 flex justify-center items-center gap-2">
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
@@ -1920,21 +2019,19 @@ const LoginPage = ({ onLogin, initialDepartments = [] }) => {
                             </button>
                         </div>
                     </main>
-
-                    {/* Estilo para impressão limpa */}
-                    <style>{`
+                     <style>{`
                         @media print {
                             body * { visibility: hidden; }
                             #roteiro-content, #roteiro-content * { visibility: visible; }
-                            #roteiro-content { position: absolute; left: 0; top: 0; width: 100%; }
+                            #roteiro-content { position: absolute; left: 0; top: 0; width: 100%; padding: 0; }
                             .bg-gray-800 { background-color: white !important; color: black !important; }
-                            input, select { border: none !important; background: transparent !important; }
+                            input, select { border: none !important; background: transparent !important; -webkit-appearance: none; }
+                            button { display: none !important; }
                         }
                     `}</style>
                 </div>
             );
         };
-
 // --- COMPONENTE DETALHES DO EVENTO (CORRIGIDO) ---
         const EventDetailPage = ({ currentUser, eventId, setView, assignments, setAssignments, mockEvents, mockScales }) => {
             const event = mockEvents.find(e => e.id === eventId);
@@ -2164,11 +2261,8 @@ const LoginPage = ({ onLogin, initialDepartments = [] }) => {
             }, [mockDepartments]);
 
             const typeOptions = useMemo(() => {
-                // Garante que é array e extrai apenas o nome (EV_NOME_EVENTO)
                 if (!Array.isArray(eventTypes)) return [];
-                return eventTypes
-                    .map(t => (typeof t === 'object' ? t.nome : t)) // Pega t.nome se for objeto
-                    .filter(t => t && t.trim() !== ''); // Remove vazios
+                return eventTypes; // Agora já vem como strings simples do backend
             }, [eventTypes]);
 
             const handleFilterChange = (e) => {
@@ -3381,6 +3475,7 @@ const LoginPage = ({ onLogin, initialDepartments = [] }) => {
                             onOpenNotifications={() => setShowNotifications(true)} 
                             onEditEvent={handleEditCalendarEvent} 
                         />;
+                    
                     case 'addCalendarEvent':
                         return <AddCalendarEventPage 
                             setView={setView} 
@@ -3390,15 +3485,30 @@ const LoginPage = ({ onLogin, initialDepartments = [] }) => {
                             departments={Object.keys(mockDepartments)} 
                             editingEvent={editingCalendarEvent} 
                         />;
-                    case 'addEvent': return <AddEventPage setView={setView} setMockEvents={setMockEvents} mockEvents={mockEvents} editingEventId={editingEventId} setEditingEventId={setEditingEventId} />;
-                                        case 'editScales': 
+                    
+                    case 'addEvent': 
+                      return <AddEventPage 
+                        setView={setView} 
+                        setMockEvents={setMockEvents} 
+                        mockEvents={mockEvents} 
+                        editingEventId={editingEventId} 
+                        setEditingEventId={setEditingEventId} 
+                        />;
+
+                    case 'editScales': 
                         return <EditScalesPage 
                             setView={setView} 
                             mockScales={mockScales}
                             setMockScales={setMockScales} 
                             setEditingEventId={setEditingEventId} 
                         />;
-                    case 'generateRoteiro': return <GenerateRoteiroPage setView={setView} mockEvents={mockEvents} mockDepartments={mockDepartments} />;
+                    
+                    case 'generateRoteiro': 
+                      return <GenerateRoteiroPage 
+                        setView={setView} 
+                        mockEvents={mockEvents} 
+                        mockDepartments={mockDepartments} 
+                        />;
                     
                     case 'eventDetail': 
                         return <EventDetailPage 
@@ -3411,12 +3521,59 @@ const LoginPage = ({ onLogin, initialDepartments = [] }) => {
                             mockScales={mockScales} 
                         />;
                         
-                    case 'calendar': return <CalendarPage currentUser={currentUser} setView={setView} setEventId={setSelectedEventId} mockEvents={mockEvents} mockDepartments={mockDepartments} eventTypes={mockEventTypes}/>;
-                    case 'profile': return <ProfilePage currentUser={currentUser} onLogout={handleLogout} onUpdateUser={handleUpdateUser} setView={setView} />;
-                    case 'myScales': return <MyScalesPage currentUser={currentUser} mockEvents={mockEvents} setView={setView} />;
-                    case 'departmentData': return <DepartmentDataPage setView={setView} />;
-                    case 'settings': return <SettingsPage currentUser={currentUser} setView={setView} setManagingTable={setManagingTable} theme={theme} setTheme={setTheme} onUpdatePassword={handleUpdatePassword} />;
-                    case 'manageTable': return <ManageTablePage tableName={managingTable} setView={setView} mockEvents={mockEvents} currentUser={currentUser} setMockEvents={setMockEvents} mockDepartments={mockDepartments} setMockDepartments={setMockDepartments} mockAccess={mockAccess} setMockAccess={setMockAccess} />;
+                    case 'calendar': 
+                      return <CalendarPage 
+                        currentUser={currentUser} 
+                        setView={setView} 
+                        setEventId={setSelectedEventId} 
+                        mockEvents={mockEvents} 
+                        mockDepartments={mockDepartments} 
+                        eventTypes={mockEventTypes}
+                        />;
+
+                    case 'profile': 
+                      return <ProfilePage 
+                        currentUser={currentUser} 
+                        onLogout={handleLogout} 
+                        onUpdateUser={handleUpdateUser} 
+                        setView={setView} 
+                        />;
+
+                    case 'myScales': 
+                      return <MyScalesPage 
+                        currentUser={currentUser} 
+                        mockEvents={mockEvents} 
+                        setView={setView} 
+                        />;
+
+                    case 'departmentData': 
+                      return <DepartmentDataPage 
+                        setView={setView} 
+                        />;
+
+                    case 'settings': 
+                      return <SettingsPage 
+                        currentUser={currentUser} 
+                        setView={setView} 
+                        setManagingTable={setManagingTable} 
+                        theme={theme} 
+                        setTheme={setTheme} 
+                        onUpdatePassword={handleUpdatePassword} 
+                        />;
+
+                    case 'manageTable': 
+                      return <ManageTablePage 
+                      tableName={managingTable} 
+                      setView={setView} 
+                      mockEvents={mockEvents} 
+                      currentUser={currentUser} 
+                      setMockEvents={setMockEvents} 
+                      mockDepartments={mockDepartments} 
+                      setMockDepartments={setMockDepartments} 
+                      mockAccess={mockAccess} 
+                      setMockAccess={setMockAccess} 
+                      />;
+
                     default: return <DashboardPage currentUser={currentUser} setView={setView} setEventId={setSelectedEventId} mockEvents={mockEvents} onOpenNotifications={() => setShowNotifications(true)} onEditEvent={handleEditCalendarEvent} />;
                 }
             };
