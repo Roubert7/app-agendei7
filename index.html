@@ -616,13 +616,11 @@ const api = {
         return this._callApi('addCalendarEvent', eventData);
     },
 
-    updateCalendarEvent: function(eventData) {
-        return this._callApi('updateCalendarEvent', eventData);
-    },
-
-    deleteCalendarEvent: function(id) {
-        return this._callApi('deleteCalendarEvent', { id: id });
-    }
+    updateCalendarEvent: function(eventData) { 
+      return this._callApi('updateCalendarEvent', eventData); },
+   
+    deleteCalendarEvent: function(id) { 
+      return this._callApi('deleteCalendarEvent', { id: id }); }
 };
 
 
@@ -1237,7 +1235,7 @@ const LoginPage = ({ onLogin, initialDepartments = [] }) => {
 
                         {(currentUser.id === 'admin' || currentUser.id === 'admin_master') && (
                             <div className="mb-6">
-                                <h3 className="text-lg font-bold text-gray-800 dark:text-gray-200 mb-3">Gerenciamento</h3>
+                                <h3 className="text-lg font-bold text-gray-800 dark:text-gray-200 mb-3">Gerenciar Escalas</h3>
                                 <div className="grid grid-cols-3 gap-2">
                                     <button onClick={() => setView('addEvent')} className="bg-violet-600 text-white rounded-lg p-2 shadow-lg hover:bg-violet-700 transition flex flex-col items-center justify-center text-center h-24">
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
@@ -1287,42 +1285,51 @@ const LoginPage = ({ onLogin, initialDepartments = [] }) => {
                 </div>
             );
         };
-        
+
         // --- 2. NOVO COMPONENTE: ADICIONAR EVENTO AO CALENDÁRIO ---
-// --- COMPONENTE ATUALIZADO: ADICIONAR EVENTO AO CALENDÁRIO ---
-        const AddCalendarEventPage = ({ setView, onSaveSuccess, branches = [], editingEvent = null }) => {
+        const AddCalendarEventPage = ({ setView, onSaveSuccess, branches = [], eventTypes = [], departments = [], editingEvent = null }) => {
+            // Estado inicial
             const [formData, setFormData] = useState({
-                id: '',
-                date: '',
-                time: '',
-                name: '',
-                location: '',
-                description: '',
-                branch: '',
-                status: 'Evento Confirmado'
+                id: '', date: '', time: '', name: '', location: '', description: '',
+                branch: '', status: 'Evento Confirmado',
+                eventType: '', 
+                needsScales: false, 
+                selectedDepartments: [] 
             });
             const [attachment, setAttachment] = useState(null);
             const [isSaving, setIsSaving] = useState(false);
             const fileInputRef = useRef(null);
             const isEditing = !!editingEvent;
 
-            // Preenche dados se for edição
             useEffect(() => {
                 if (isEditing && editingEvent) {
+                    // Preenche dados na edição
                     setFormData({
-                        id: editingEvent.id,
-                        name: editingEvent.name,
-                        location: editingEvent.location,
-                        description: editingEvent.description,
-                        branch: editingEvent.branch || editingEvent.department, // Fallback
-                        status: editingEvent.status,
-                        date: editingEvent.date, // Assume YYYY-MM-DD do backend corrigido
-                        time: editingEvent.time
+                        id: editingEvent.id || '',
+                        name: editingEvent.name || '',
+                        location: editingEvent.location || '',
+                        description: editingEvent.description || '',
+                        branch: editingEvent.branch || editingEvent.department || '',
+                        status: editingEvent.status || 'Evento Confirmado',
+                        date: editingEvent.date || '',
+                        time: editingEvent.time || '',
+                        eventType: editingEvent.eventType || '', 
+                        needsScales: editingEvent.needsScales || false,
+                        selectedDepartments: editingEvent.selectedDepartments || []
                     });
-                    // Nota: Anexos antigos não são mostrados no input file, mas mantidos no backend se não trocados
                 }
             }, [editingEvent]);
 
+            const handleDeptToggle = (dept) => {
+                const current = formData.selectedDepartments;
+                if (current.includes(dept)) {
+                    setFormData({...formData, selectedDepartments: current.filter(d => d !== dept)});
+                } else {
+                    setFormData({...formData, selectedDepartments: [...current, dept]});
+                }
+            };
+            
+             // Função auxiliar base64
             const fileToBase64 = (file) => new Promise((resolve, reject) => {
                 const reader = new FileReader();
                 reader.readAsDataURL(file);
@@ -1332,18 +1339,18 @@ const LoginPage = ({ onLogin, initialDepartments = [] }) => {
 
             const handleSubmit = async (e) => {
                 e.preventDefault();
-                if (!formData.branch) return alert("Selecione uma Filial.");
                 setIsSaving(true);
                 try {
                     let payload = { ...formData };
+                    // Converte array de deptos para string para salvar na planilha
+                    payload.departmentsString = formData.selectedDepartments.join(', ');
+
                     if (attachment) {
-                        const base64 = await fileToBase64(attachment);
-                        payload.fileData = base64;
+                        payload.fileData = await fileToBase64(attachment);
                         payload.fileName = attachment.name;
                         payload.mimeType = attachment.type;
                     }
 
-                    // Se tem ID e é edição, chama update. Senão, add.
                     if (isEditing) {
                         await api.updateCalendarEvent(payload);
                         alert("Evento atualizado com sucesso!");
@@ -1351,12 +1358,8 @@ const LoginPage = ({ onLogin, initialDepartments = [] }) => {
                         await api.addCalendarEvent(payload);
                         alert("Evento criado com sucesso!");
                     }
-                    onSaveSuccess(); 
-                } catch (error) {
-                    alert("Erro: " + error.message);
-                } finally {
-                    setIsSaving(false);
-                }
+                    onSaveSuccess();
+                } catch (error) { alert("Erro: " + error.message); } finally { setIsSaving(false); }
             };
 
             const handleDelete = async () => {
@@ -1377,7 +1380,6 @@ const LoginPage = ({ onLogin, initialDepartments = [] }) => {
                     <Header title={isEditing ? "Editar Evento" : "Novo Evento"} onBack={() => setView('dashboard')} />
                     <main className="p-4 max-w-4xl mx-auto">
                         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
-                            <h2 className="text-lg font-bold text-gray-800 dark:text-gray-200 mb-4">Detalhes do Evento</h2>
                             <form onSubmit={handleSubmit} className="space-y-4">
                                 <div>
                                     <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Título do Evento</label>
@@ -1385,65 +1387,99 @@ const LoginPage = ({ onLogin, initialDepartments = [] }) => {
                                         value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
                                 </div>
 
+                                {/* TIPO DE EVENTO E FILIAL */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                     <div>
+                                        <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Tipo do Evento</label>
+                                        <select className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white"
+                                            value={formData.eventType} onChange={e => setFormData({...formData, eventType: e.target.value})}>
+                                            <option value="">Selecione...</option>
+                                            {eventTypes.map((t, i) => {
+                                                const label = typeof t === 'object' ? t.nome : t;
+                                                return <option key={i} value={label}>{label}</option>;
+                                            })}
+                                        </select>
+                                    </div>
                                     <div>
-                                        <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Filial (Igreja) <span className="text-red-500">*</span></label>
+                                        <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Filial</label>
                                         <select required className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white"
                                             value={formData.branch} onChange={e => setFormData({...formData, branch: e.target.value})}>
                                             <option value="">Selecione...</option>
                                             {branches.map((b, idx) => <option key={idx} value={b}>{b}</option>)}
                                         </select>
                                     </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
+                                        <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Data</label>
+                                        <input type="date" required className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Horário</label>
+                                        <input type="time" required className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white" value={formData.time} onChange={e => setFormData({...formData, time: e.target.value})} />
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                     <div>
+                                        <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Local</label>
+                                        <input type="text" required className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white" value={formData.location} onChange={e => setFormData({...formData, location: e.target.value})} />
+                                    </div>
+                                     <div>
                                         <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Status</label>
-                                        <select required className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white"
+                                        <select className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white"
                                             value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})}>
                                             <option value="Evento Confirmado">Evento Confirmado</option>
                                             <option value="Evento Cancelado">Evento Cancelado</option>
                                         </select>
                                     </div>
                                 </div>
+
+                                {/* NECESSITA ESCALAS (CHECKBOX) */}
+                                <div className="bg-gray-50 dark:bg-gray-700/50 p-3 rounded border dark:border-gray-600">
+                                    <label className="flex items-center space-x-2 cursor-pointer mb-2">
+                                        <input type="checkbox" checked={formData.needsScales} onChange={e => setFormData({...formData, needsScales: e.target.checked})} className="h-5 w-5 text-violet-600 rounded" />
+                                        <span className="font-bold text-gray-700 dark:text-gray-300">Necessita de Escalas?</span>
+                                    </label>
+                                    
+                                    {formData.needsScales && (
+                                        <div className="pl-7 grid grid-cols-2 gap-2 mt-2">
+                                            {departments.map(dept => (
+                                                <label key={dept} className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400 cursor-pointer">
+                                                    <input 
+                                                        type="checkbox" 
+                                                        checked={formData.selectedDepartments.includes(dept)}
+                                                        onChange={() => handleDeptToggle(dept)}
+                                                        className="text-violet-500 rounded"
+                                                    />
+                                                    <span>{dept}</span>
+                                                </label>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
                                 
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Data</label>
-                                        <input type="date" required className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white" 
-                                            value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Horário</label>
-                                        <input type="time" required className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white" 
-                                            value={formData.time} onChange={e => setFormData({...formData, time: e.target.value})} />
-                                    </div>
-                                </div>
-
                                 <div>
-                                    <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Local</label>
-                                    <input type="text" required className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white" 
-                                        value={formData.location} onChange={e => setFormData({...formData, location: e.target.value})} />
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Anexo (Banner)</label>
+                                    <label className="block text-sm font-bold mb-1">Anexo</label>
                                     <div className="flex items-center gap-2">
-                                        <label className="cursor-pointer bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 px-4 py-2 rounded border text-sm font-semibold">
+                                        <label className="cursor-pointer bg-gray-100 px-4 py-2 rounded border text-sm font-semibold hover:bg-gray-200 transition">
                                             Escolher Arquivo
                                             <input type="file" ref={fileInputRef} className="hidden" onChange={e => setAttachment(e.target.files[0])} />
                                         </label>
                                         <span className="text-xs text-gray-500 truncate max-w-xs">
-                                            {attachment ? attachment.name : isEditing && editingEvent.attachment ? 'Anexo Existente (Envie outro para substituir)' : 'Nenhum arquivo'}
+                                            {attachment ? attachment.name : 'Nenhum'}
                                         </span>
                                     </div>
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Descrição</label>
-                                    <textarea className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white h-24" 
-                                        value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})}></textarea>
+                                    <label className="block text-sm font-bold mb-1">Descrição</label>
+                                    <textarea className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white h-24" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})}></textarea>
                                 </div>
 
-                                <button type="submit" disabled={isSaving} className="w-full bg-violet-600 text-white font-bold py-3 rounded-lg hover:bg-violet-700 transition flex justify-center items-center">
-                                    {isSaving ? <div className="loader w-5 h-5 border-2 border-white border-t-transparent"></div> : (isEditing ? 'Atualizar Dados' : 'Salvar Evento')}
+                                <button type="submit" disabled={isSaving} className="w-full bg-violet-600 text-white font-bold py-3 rounded-lg hover:bg-violet-700 transition">
+                                    {isSaving ? 'Salvando...' : (isEditing ? 'Atualizar Dados' : 'Salvar Evento')}
                                 </button>
 
                                 {isEditing && (
@@ -1673,164 +1709,66 @@ const LoginPage = ({ onLogin, initialDepartments = [] }) => {
         };
         
 
-        const EditScalesPage = ({ setView, mockEvents, setMockEvents, setEditingEventId }) => {
+        const EditScalesPage = ({ setView, mockScales, setMockScales, setEditingEventId }) => {
             const initialFilters = {
-                date: '', status: 'Todos', eventType: 'Todos', serviceType: 'Todos', department: 'Todos'
+                date: '', status: 'Todos', eventType: 'Todos', department: 'Todos'
             };
-
             const [filters, setFilters] = useState(initialFilters);
-            const [modalInfo, setModalInfo] = useState({ isOpen: false, type: null, event: null });
+
+            // Usa mockScales (Tabela ESCALAS) em vez de mockEvents
+            const escalasParaExibir = Array.isArray(mockScales) ? mockScales : [];
 
             const filterOptions = useMemo(() => {
-                const departments = [...new Set(mockEvents.map(e => e.department))];
-                const statuses = [...new Set(mockEvents.map(e => e.status))];
-                const eventTypes = [...new Set(mockEvents.map(e => e.eventType))];
-                const serviceTypes = [...new Set(mockEvents.map(e => e.serviceType))];
-                return { departments, statuses, eventTypes, serviceTypes };
-            }, [mockEvents]);
+                const departments = [...new Set(escalasParaExibir.map(e => e.departamento))];
+                const statuses = [...new Set(escalasParaExibir.map(e => e.status))];
+                const eventTypes = [...new Set(escalasParaExibir.map(e => e.tipoEvento))];
+                return { departments, statuses, eventTypes };
+            }, [escalasParaExibir]);
 
-
-            const handleFilterChange = (e) => {
-                const { name, value } = e.target;
-                setFilters(prev => ({ ...prev, [name]: value }));
-            };
-            
-            const handleClearFilters = () => {
-                setFilters(initialFilters);
-            };
-
-            const filteredEvents = useMemo(() => {
-                return mockEvents.filter(event => {
-                    if (filters.date && event.date !== filters.date) return false;
-                    if (filters.status !== 'Todos' && event.status !== filters.status) return false;
-                    if (filters.eventType !== 'Todos' && event.eventType !== filters.eventType) return false;
-                    if (filters.serviceType !== 'Todos' && event.serviceType !== filters.serviceType) return false;
-                    if (filters.department !== 'Todos' && event.department !== filters.department) return false;
+            const filteredScales = useMemo(() => {
+                return escalasParaExibir.filter(scale => {
+                    // Normaliza data
+                    let scaleDate = scale.dataEvento;
+                    if(scaleDate instanceof Date) scaleDate = scaleDate.toISOString().split('T')[0];
+                    
+                    if (filters.date && scaleDate !== filters.date) return false;
+                    if (filters.status !== 'Todos' && scale.status !== filters.status) return false;
+                    if (filters.eventType !== 'Todos' && scale.tipoEvento !== filters.eventType) return false;
+                    if (filters.department !== 'Todos' && scale.departamento !== filters.department) return false;
                     return true;
                 });
-            }, [filters, mockEvents]);
-            
-            const getStatusBadgeColor = (status) => {
-                switch (status) {
-                    case 'Aberta': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
-                    case 'Fechada': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
-                    case 'Em Andamento': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
-                    default: return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
-                }
-            };
-            
-            const handleConfirmAction = () => {
-                if (modalInfo.type === 'delete') {
-                    setMockEvents(prevEvents => prevEvents.filter(event => event.id !== modalInfo.event.id));
-                } else if (modalInfo.type === 'edit') {
-                    setEditingEventId(modalInfo.event.id);
-                    setView('addEvent');
-                }
-                setModalInfo({ isOpen: false, type: null, event: null }); // Close modal
-            };
+            }, [filters, escalasParaExibir]);
+
+            const handleFilterChange = (e) => setFilters({ ...filters, [e.target.name]: e.target.value });
 
             return (
                 <div>
-                    <Header title="Editar Agendamentos" onBack={() => setView('dashboard')} />
-                    <ConfirmationModal 
-                        modalInfo={modalInfo}
-                        onConfirm={handleConfirmAction}
-                        onCancel={() => setModalInfo({ isOpen: false, type: null, event: null })}
-                    />
+                    <Header title="Editar Escalas" onBack={() => setView('dashboard')} />
                     <main className="p-4 pb-20 max-w-4xl mx-auto">
                         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-6">
-                            <div className="flex justify-between items-center mb-3">
-                                <h3 className="font-bold text-gray-800 dark:text-gray-200">Filtros</h3>
-                                <button onClick={handleClearFilters} className="text-sm text-violet-600 dark:text-violet-400 hover:text-violet-800 dark:hover:text-violet-300 font-semibold">Limpar Filtros</button>
-                            </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
-                                <input type="date" name="date" value={filters.date} onChange={handleFilterChange} className="border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:border-violet-300 focus:ring focus:ring-violet-200 focus:ring-opacity-50 dark:bg-gray-700 dark:text-gray-300"/>
-                                <select name="status" value={filters.status} onChange={handleFilterChange} className="border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:border-violet-300 focus:ring focus:ring-violet-200 focus:ring-opacity-50 dark:bg-gray-700 dark:text-gray-300">
-                                    <option value="Todos">Status (Todos)</option>
-                                    {filterOptions.statuses.map(s => <option key={s} value={s}>{s}</option>)}
-                                </select>
-                                <select name="eventType" value={filters.eventType} onChange={handleFilterChange} className="border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:border-violet-300 focus:ring focus:ring-violet-200 focus:ring-opacity-50 dark:bg-gray-700 dark:text-gray-300">
-                                    <option value="Todos">Tipo Evento (Todos)</option>
-                                    {filterOptions.eventTypes.map(t => <option key={t} value={t}>{t}</option>)}
-                                </select>
-                                <select name="serviceType" value={filters.serviceType} onChange={handleFilterChange} className="border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:border-violet-300 focus:ring focus:ring-violet-200 focus:ring-opacity-50 dark:bg-gray-700 dark:text-gray-300">
-                                    <option value="Todos">Tipo Culto (Todos)</option>
-                                    {filterOptions.serviceTypes.map(s => <option key={s} value={s}>{s}</option>)}
-                                </select>
-                                <select name="department" value={filters.department} onChange={handleFilterChange} className="border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:border-violet-300 focus:ring focus:ring-violet-200 focus:ring-opacity-50 dark:bg-gray-700 dark:text-gray-300">
-                                    <option value="Todos">Depto (Todos)</option>
+                            <h3 className="font-bold text-gray-800 dark:text-gray-200 mb-3">Filtros</h3>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                                <input type="date" name="date" onChange={handleFilterChange} className="border rounded p-2 dark:bg-gray-700 dark:text-white"/>
+                                <select name="department" onChange={handleFilterChange} className="border rounded p-2 dark:bg-gray-700 dark:text-white">
+                                    <option value="Todos">Todos Departamentos</option>
                                     {filterOptions.departments.map(d => <option key={d} value={d}>{d}</option>)}
                                 </select>
                             </div>
                         </div>
-                        
-                        <div className="mb-4 px-1">
-                            <p className="text-sm text-gray-600 dark:text-gray-400"><strong className="text-gray-800 dark:text-gray-200">{filteredEvents.length}</strong> agendamentos encontrados.</p>
-                        </div>
 
                         <div className="space-y-3">
-                            {filteredEvents.map(event => (
-                                <div key={event.id} className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 hover:shadow-lg transition">
-                                    <div className="flex justify-between items-center">
-                                        {/* Informações da Escala */}
-                                        <div onClick={() => alert(`Visualizar detalhes de: ${event.name}`)} className="cursor-pointer flex-1 mr-4">
-                                            <h4 className="font-bold text-gray-900 dark:text-gray-200">{event.name}</h4>
-                                            <div className="flex items-center gap-3 mt-1 text-sm">
-                                                 <p className="text-gray-500 dark:text-gray-400">{new Date(event.date + 'T00:00:00').toLocaleDateString('pt-BR')} - {event.department}</p>
-                                                 <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${getStatusBadgeColor(event.status)}`}>
-                                                    {event.status}
-                                                </span>
-                                            </div>
+                            {filteredScales.map(scale => (
+                                <div key={scale.id} className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border-l-4 border-blue-500">
+                                    <div className="flex justify-between">
+                                        <div>
+                                            <p className="text-xs font-bold text-blue-600">{scale.departamento}</p>
+                                            <h4 className="font-bold text-gray-800 dark:text-white">{scale.nomePessoa}</h4>
+                                            <p className="text-sm text-gray-500">{scale.funcao} - {new Date(scale.dataEvento).toLocaleDateString('pt-BR')}</p>
                                         </div>
-                                        {/* Botões de Ação */}
-                                        <div className="flex gap-2">
-                                            <button
-                                                onClick={(e) => { 
-                                                    e.stopPropagation();
-                                                    setModalInfo({
-                                                        isOpen: true,
-                                                        type: 'edit',
-                                                        event: event,
-                                                        title: 'Confirmar Edição',
-                                                        message: `Você tem certeza que deseja editar o agendamento "${event.name}"?`,
-                                                        confirmText: 'Editar',
-                                                        confirmColor: 'bg-violet-600 hover:bg-violet-700'
-                                                    });
-                                                }}
-                                                className="p-2 text-violet-600 dark:text-violet-400 hover:bg-violet-100 dark:hover:bg-gray-700 rounded-full transition"
-                                                title="Editar"
-                                            >
-                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.536l12.232-12.232z" />
-                                                </svg>
-                                            </button>
-                                            <button
-                                                onClick={(e) => { 
-                                                    e.stopPropagation(); 
-                                                    setModalInfo({
-                                                        isOpen: true,
-                                                        type: 'delete',
-                                                        event: event,
-                                                        title: 'Confirmar Exclusão',
-                                                        message: `Tem certeza que deseja excluir o agendamento "${event.name}"? Esta ação não pode ser desfeita.`,
-                                                        confirmText: 'Excluir',
-                                                        confirmColor: 'bg-red-600 hover:bg-red-700'
-                                                    });
-                                                }}
-                                                className="p-2 text-red-500 hover:bg-red-100 dark:hover:bg-gray-700 rounded-full transition"
-                                                title="Excluir"
-                                            >
-                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                </svg>
-                                            </button>
-                                        </div>
+                                        <button className="text-gray-400 hover:text-blue-600"><svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.536l12.232-12.232z" /></svg></button>
                                     </div>
                                 </div>
                             ))}
-                             {filteredEvents.length === 0 && (
-                                <p className="text-center text-gray-500 dark:text-gray-400 mt-6">Nenhum agendamento encontrado com os filtros selecionados.</p>
-                            )}
                         </div>
                     </main>
                 </div>
@@ -1838,192 +1776,164 @@ const LoginPage = ({ onLogin, initialDepartments = [] }) => {
         };
 
         const GenerateRoteiroPage = ({ setView, mockEvents, mockDepartments }) => {
-    const [selectedDate, setSelectedDate] = useState('2025-11-15');
-    const [roteiroItems, setRoteiroItems] = useState([]);
-    const [notificationModalOpen, setNotificationModalOpen] = useState(false);
-    const [selectedDeptForNotification, setSelectedDeptForNotification] = useState('');
+            const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+            const [roteiroItems, setRoteiroItems] = useState([]);
+            
+            // Mock inicial inteligente (poderia vir do banco futuramente)
+            useEffect(() => {
+                const initialData = [
+                    { id: 1, section: 'ES', time: '08:50', activity: 'Música ambiente', dept: 'Sonoplastia', detail: '', manualDetail: '[FIXO]' },
+                    { id: 2, section: 'ES', time: '09:00', activity: 'Boas-vindas e oração', dept: 'Equipe de Louvor', detail: '', manualDetail: '' },
+                    { id: 3, section: 'ES', time: '09:10', activity: 'Carta Missionária', dept: 'Escola Sabatina', detail: '', manualDetail: '' },
+                    { id: 4, section: 'CD', time: '10:30', activity: 'Entrada', dept: 'Diaconato', detail: '', manualDetail: '' },
+                    { id: 5, section: 'CD', time: '10:40', activity: 'Louvor', dept: 'Ministerio de Louvor', detail: '', manualDetail: '' },
+                ];
+                setRoteiroItems(initialData);
+            }, [selectedDate]);
 
-    // Mockando departamentos importantes para o resumo
-    const priorityDepts = ['MINISTERIO DA MUSICA', 'MINISTERIO INFANTIL', 'DIACONATO', 'Sonoplastia'];
-
-    // Função para verificar se é Sábado
-    const isSaturday = (dateString) => {
-        if (!dateString) return false;
-        const day = new Date(dateString + 'T00:00:00').getDay(); 
-        return day === 6; 
-    };
-
-    // Filtra eventos para a data selecionada para compor o resumo
-    const eventsForDate = useMemo(() => {
-        return mockEvents.filter(event => event.date === selectedDate);
-    }, [selectedDate, mockEvents]);
-
-    // Calcula o status de cada departamento para o resumo
-    const departmentStatus = useMemo(() => {
-        const scheduled = new Map(eventsForDate.map(e => [e.department, e]));
-        
-        return priorityDepts.map(deptName => {
-            const event = scheduled.get(deptName);
-            return {
-                name: deptName,
-                isScheduled: !!event,
-                details: event ? `${event.responsible} - ${event.description || 'Sem obs'}` : null
+            const handleItemChange = (id, field, value) => {
+                setRoteiroItems(prev => prev.map(item => item.id === id ? { ...item, [field]: value } : item));
             };
-        });
-    }, [eventsForDate, priorityDepts]);
 
-    // Mock Data do Roteiro
-    useEffect(() => {
-        const mockData = [
-            { id: 1, time: '08:50', activity: 'Música ambiente', dept: 'Sonoplastia', detail: '[FIXO]', section: 'ES' },
-            { id: 2, time: '09:00', activity: 'Boas-vindas e oração', dept: 'Equipe de Louvor', detail: 'Sergio - Raiane', section: 'ES' },
-            { id: 3, time: '09:10', activity: 'Carta Missionária', dept: 'Escola Sabatina', detail: 'Luciano', section: 'ES' },
-            { id: 4, time: '10:33', activity: 'Hino Fixo - 21', dept: 'Equipe de Louvor', detail: 'Sergio - Raiane', section: 'CD' },
-            { id: 5, time: '10:38', activity: 'Oração de Invocação', dept: 'Ancionato', detail: 'Ancião Azerêdo', section: 'CD' },
-            { id: 6, time: '10:58', activity: 'Hino de Ofertas', dept: 'Equipe de Louvor', detail: 'Katia Prates', section: 'CD' },
-            { id: 7, time: '11:08', activity: 'Sermão', dept: 'Pregadora', detail: 'Stefanie Batistoti', section: 'CD' },
-        ];
-        setRoteiroItems(mockData);
-    }, [selectedDate]);
+            const addNewLine = (section) => {
+                const newItem = { 
+                    id: Date.now(), 
+                    section, 
+                    time: '--:--', 
+                    activity: 'Nova Atividade', 
+                    dept: '', 
+                    detail: '', 
+                    manualDetail: '' 
+                };
+                setRoteiroItems([...roteiroItems, newItem]);
+            };
 
-    const handleTimeChange = (id, newTime) => {
-        setRoteiroItems(prevItems => prevItems.map(item => item.id === id ? { ...item, time: newTime } : item));
-    };
+            const removeLine = (id) => {
+                if(confirm("Remover linha?")) setRoteiroItems(roteiroItems.filter(i => i.id !== id));
+            };
 
-    const handleOpenNotification = (deptName) => {
-        setSelectedDeptForNotification(deptName);
-        setNotificationModalOpen(true);
-    };
+            // Lógica de Responsável Automático (Simulada)
+            const getResponsibleText = (dept) => {
+                if (!dept) return '';
+                if (dept.includes('Louvor') || dept.includes('Musica')) return "Equipe Escapada"; // Exemplo
+                if (dept.includes('Infantil')) return "Tia Responsável";
+                return "Líder do Depto";
+            };
 
-    const handleDownload = (format) => alert(`Gerando arquivo ${format.toUpperCase()}...`);
-    const handleSave = () => alert("Horários salvos com sucesso!");
+            const handlePrintPDF = () => window.print(); // Usa o print nativo do navegador (salvar como PDF)
 
-    const saveButton = (
-        <button onClick={handleSave} className="text-violet-600 dark:text-violet-400 font-semibold text-sm hover:bg-violet-50 dark:hover:bg-gray-700 px-3 py-1 rounded-full transition flex items-center gap-1">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
-            Salvar
-        </button>
-    );
+            const handleExportXLS = () => {
+                let csvContent = "data:text/csv;charset=utf-8,Hora,Atividade,Departamento,Detalhe\n";
+                roteiroItems.forEach(row => {
+                    csvContent += `${row.time},${row.activity},${row.dept},${row.manualDetail}\n`;
+                });
+                const encodedUri = encodeURI(csvContent);
+                const link = document.createElement("a");
+                link.setAttribute("href", encodedUri);
+                link.setAttribute("download", "roteiro_agendei7.csv");
+                document.body.appendChild(link);
+                link.click();
+            };
 
-    const RoteiroTable = ({ items, title, titleColor }) => (
-        <div className="mb-6 overflow-x-auto border dark:border-gray-700 rounded-lg shadow-sm">
-            {title && <div className={`text-center font-bold py-2 uppercase text-sm ${titleColor || 'bg-gray-200 text-gray-800'}`}>{title}</div>}
-            <table className="min-w-full text-sm text-left bg-white dark:bg-gray-800">
-                <thead className="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 font-bold border-b dark:border-gray-600">
-                    <tr>
-                        <th className="px-3 py-2 w-24 border-r dark:border-gray-600">Hora</th>
-                        <th className="px-3 py-2 border-r dark:border-gray-600">Atividade</th>
-                        <th className="px-3 py-2 border-r dark:border-gray-600">Departamento</th>
-                        <th className="px-3 py-2">Responsável/Detalhe</th>
-                    </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                    {items.map((item, idx) => (
-                        <tr key={item.id} className={idx % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-900'}>
-                            <td className="px-3 py-1 border-r dark:border-gray-600">
-                                <input type="text" value={item.time} onChange={(e) => handleTimeChange(item.id, e.target.value)} className="w-full font-bold text-gray-900 dark:text-white bg-transparent border-b border-transparent hover:border-gray-300 focus:border-violet-500 focus:outline-none text-center" />
-                            </td>
-                            <td className="px-3 py-2 border-r dark:border-gray-600 text-gray-800 dark:text-gray-200">{item.activity}</td>
-                            <td className="px-3 py-2 border-r dark:border-gray-600 text-gray-600 dark:text-gray-400 text-xs">{item.dept}</td>
-                            <td className="px-3 py-2 text-gray-600 dark:text-gray-400 text-xs">{item.detail}</td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
-        </div>
-    );
+            const RoteiroTable = ({ items, title, section }) => (
+                <div className="mb-6 bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+                    <div className="bg-gray-200 dark:bg-gray-700 px-4 py-2 font-bold text-gray-700 dark:text-gray-200 flex justify-between items-center">
+                        <span>{title}</span>
+                        <button onClick={() => addNewLine(section)} className="text-xs bg-violet-600 text-white px-2 py-1 rounded hover:bg-violet-700">+ Linha</button>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="min-w-full text-sm text-left">
+                            <thead className="bg-gray-100 dark:bg-gray-900 text-gray-600 dark:text-gray-400 font-bold">
+                                <tr>
+                                    <th className="px-3 py-2 w-20">Hora</th>
+                                    <th className="px-3 py-2">Atividade</th>
+                                    <th className="px-3 py-2">Departamento</th>
+                                    <th className="px-3 py-2">Responsável</th>
+                                    <th className="px-3 py-2">Detalhe (Músicas)</th>
+                                    <th className="px-1 py-2 w-8"></th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                                {items.map((item) => (
+                                    <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                                        <td className="px-2 py-1">
+                                            <input type="text" value={item.time} onChange={(e) => handleItemChange(item.id, 'time', e.target.value)} className="w-full bg-transparent border-b border-transparent focus:border-violet-500 outline-none text-center font-mono" />
+                                        </td>
+                                        <td className="px-2 py-1">
+                                            <input type="text" value={item.activity} onChange={(e) => handleItemChange(item.id, 'activity', e.target.value)} className="w-full bg-transparent border-b border-transparent focus:border-violet-500 outline-none" />
+                                        </td>
+                                        <td className="px-2 py-1">
+                                            <select value={item.dept} onChange={(e) => handleItemChange(item.id, 'dept', e.target.value)} className="w-full bg-transparent border-b border-transparent focus:border-violet-500 outline-none text-xs">
+                                                <option value="">Selecione...</option>
+                                                {Object.keys(mockDepartments).map(d => <option key={d} value={d}>{d}</option>)}
+                                            </select>
+                                        </td>
+                                        <td className="px-2 py-1 text-xs text-gray-500">
+                                            {getResponsibleText(item.dept)}
+                                        </td>
+                                        <td className="px-2 py-1">
+                                            <input type="text" value={item.manualDetail} onChange={(e) => handleItemChange(item.id, 'manualDetail', e.target.value)} className="w-full bg-transparent border-b border-transparent focus:border-violet-500 outline-none text-xs" placeholder="..." />
+                                        </td>
+                                        <td className="px-1 py-1 text-center">
+                                            <button onClick={() => removeLine(item.id)} className="text-red-400 hover:text-red-600 font-bold">×</button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            );
 
-    const renderRoteiroContent = () => {
-        const isSat = isSaturday(selectedDate);
-        if (isSat) {
             const escolaSabatina = roteiroItems.filter(i => i.section === 'ES');
             const cultoDivino = roteiroItems.filter(i => i.section === 'CD');
+
             return (
-                <>
-                    <RoteiroTable items={escolaSabatina} title="ESCOLA SABATINA" titleColor="bg-yellow-100 text-yellow-900" />
-                    <RoteiroTable items={cultoDivino} title="CULTO DIVINO" titleColor="bg-yellow-100 text-yellow-900" />
-                </>
+                <div className="print:bg-white">
+                    <div className="print:hidden">
+                        <Header title="Gerar Roteiro" onBack={() => setView('dashboard')} />
+                    </div>
+                    
+                    <main className="p-4 max-w-5xl mx-auto pb-20 print:p-0">
+                        {/* Filtro de Data (Não sai na impressão) */}
+                        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 mb-6 print:hidden">
+                            <label className="block text-sm font-bold mb-2 dark:text-gray-200">Data do Evento:</label>
+                            <input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} className="border rounded p-2 w-full dark:bg-gray-700 dark:text-white" />
+                        </div>
+
+                        {/* Tabelas */}
+                        <div id="roteiro-content">
+                            <h2 className="text-center font-bold text-xl mb-4 hidden print:block">Roteiro - {new Date(selectedDate).toLocaleDateString('pt-BR')}</h2>
+                            <RoteiroTable items={escolaSabatina} title="Escola Sabatina" section="ES" />
+                            <RoteiroTable items={cultoDivino} title="Culto Divino" section="CD" />
+                        </div>
+
+                        {/* Botões de Exportação */}
+                        <div className="flex gap-3 mt-6 print:hidden">
+                            <button onClick={handlePrintPDF} className="flex-1 bg-red-600 text-white font-bold py-3 rounded-lg hover:bg-red-700 flex justify-center items-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+                                Gerar PDF / Imprimir
+                            </button>
+                            <button onClick={handleExportXLS} className="flex-1 bg-green-600 text-white font-bold py-3 rounded-lg hover:bg-green-700 flex justify-center items-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                Gerar CSV (Excel)
+                            </button>
+                        </div>
+                    </main>
+
+                    {/* Estilo para impressão limpa */}
+                    <style>{`
+                        @media print {
+                            body * { visibility: hidden; }
+                            #roteiro-content, #roteiro-content * { visibility: visible; }
+                            #roteiro-content { position: absolute; left: 0; top: 0; width: 100%; }
+                            .bg-gray-800 { background-color: white !important; color: black !important; }
+                            input, select { border: none !important; background: transparent !important; }
+                        }
+                    `}</style>
+                </div>
             );
-        } else {
-            return <RoteiroTable items={roteiroItems} title={`PROGRAMAÇÃO - ${new Date(selectedDate + 'T00:00:00').toLocaleDateString('pt-BR', { weekday: 'long' }).toUpperCase()}`} titleColor="bg-violet-100 text-violet-900" />;
-        }
-    };
-
-    return (
-        <div>
-            <Header title="Gerar Roteiro" onBack={() => setView('dashboard')} rightAction={saveButton} />
-            <AdvancedNotificationModal 
-                isOpen={notificationModalOpen} 
-                departmentName={selectedDeptForNotification} 
-                onClose={() => setNotificationModalOpen(false)}
-                onSend={(data) => console.log("Dados enviados:", data)}
-            />
-            
-            <main className="p-2 pb-24 max-w-4xl mx-auto">
-                {/* Seletor de Data */}
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-4">
-                    <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Data do Evento:</label>
-                    <input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} className="shadow appearance-none border rounded-md w-full py-2 px-3 text-gray-700 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-violet-500" />
-                </div>
-
-                {/* Resumo dos Departamentos */}
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-4">
-                    <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-3 uppercase border-b pb-2 dark:border-gray-700">Status dos Departamentos</h3>
-                    <div className="space-y-3">
-                        {departmentStatus.map(dept => (
-                            <div key={dept.name} className="flex items-center justify-between bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg">
-                                <div className="flex-1 pr-4">
-                                    <p className="font-semibold text-gray-800 dark:text-gray-200 text-sm">{dept.name}</p>
-                                    {dept.isScheduled ? (
-                                        <p className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1 mt-1">
-                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
-                                            Escala Recebida: <span className="text-gray-500 dark:text-gray-400 truncate max-w-[150px]">{dept.details}</span>
-                                        </p>
-                                    ) : (
-                                        <p className="text-xs text-red-500 mt-1">Pendente de envio</p>
-                                    )}
-                                </div>
-                                <div>
-                                    {dept.isScheduled ? (
-                                        <button className="text-gray-400 cursor-default" title="Ok">
-                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-green-500" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
-                                        </button>
-                                    ) : (
-                                        <button 
-                                            onClick={() => handleOpenNotification(dept.name)}
-                                            className="flex items-center gap-1 bg-red-100 hover:bg-red-200 text-red-700 dark:bg-red-900/30 dark:hover:bg-red-900/50 dark:text-red-300 px-3 py-1.5 rounded-md text-xs font-bold transition"
-                                        >
-                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
-                                            Notificar
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-2 mb-4">
-                    {renderRoteiroContent()}
-                </div>
-
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4">
-                     <h3 className="text-lg font-bold text-gray-800 dark:text-gray-200 mb-4">Exportar Roteiro</h3>
-                     <div className="flex flex-col sm:flex-row gap-3">
-                        <button onClick={() => handleDownload('pdf')} className="flex-1 bg-red-600 text-white font-semibold py-3 px-4 rounded-lg hover:bg-red-700 transition shadow text-sm flex justify-center items-center gap-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
-                            Gerar PDF
-                        </button>
-                        <button onClick={() => handleDownload('xls')} className="flex-1 bg-green-600 text-white font-semibold py-3 px-4 rounded-lg hover:bg-green-700 transition shadow text-sm flex justify-center items-center gap-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                            Gerar XLS
-                        </button>
-                    </div>
-                </div>
-            </main>
-        </div>
-    );
-};
+        };
 
 // --- COMPONENTE DETALHES DO EVENTO (CORRIGIDO) ---
         const EventDetailPage = ({ currentUser, eventId, setView, assignments, setAssignments, mockEvents, mockScales }) => {
@@ -2243,27 +2153,46 @@ const LoginPage = ({ onLogin, initialDepartments = [] }) => {
             );
         };
         
-        const CalendarPage = ({ setView, setEventId, mockEvents }) => {
-            const [currentDate, setCurrentDate] = useState(new Date(2025, 9, 15)); // Outubro de 2025
+        // --- TELA DE CALENDÁRIO (CORRIGIDA) ---
+        const CalendarPage = ({ setView, setEventId, mockEvents, mockDepartments = {}, eventTypes = [] }) => {
+            const [currentDate, setCurrentDate] = useState(new Date());
             const [filters, setFilters] = useState({ department: 'Todos', eventType: 'Todos' });
 
-            const handleAction = (action) => alert(`Funcionalidade de "${action}" a ser implementada.`);
-            
+            // 1. Processa as opções dos Dropdowns com segurança
+            const deptOptions = useMemo(() => {
+                return Object.keys(mockDepartments); 
+            }, [mockDepartments]);
+
+            const typeOptions = useMemo(() => {
+                // Garante que é array e extrai apenas o nome (EV_NOME_EVENTO)
+                if (!Array.isArray(eventTypes)) return [];
+                return eventTypes
+                    .map(t => (typeof t === 'object' ? t.nome : t)) // Pega t.nome se for objeto
+                    .filter(t => t && t.trim() !== ''); // Remove vazios
+            }, [eventTypes]);
+
             const handleFilterChange = (e) => {
                 const { name, value } = e.target;
                 setFilters(prev => ({ ...prev, [name]: value }));
             };
 
-            const filterOptions = useMemo(() => {
-                const departments = ['Todos', ...new Set(mockEvents.map(e => e.department))];
-                const eventTypes = ['Todos', ...new Set(mockEvents.map(e => e.eventType))];
-                return { departments, eventTypes };
-            }, [mockEvents]);
-
             const filteredEvents = useMemo(() => {
                 return mockEvents.filter(event => {
-                    if (filters.department !== 'Todos' && event.department !== filters.department) return false;
-                    if (filters.eventType !== 'Todos' && event.eventType !== filters.eventType) return false;
+                    // Filtro de Departamento/Filial
+                    if (filters.department !== 'Todos') {
+                         const deptMatch = event.department === filters.department;
+                         const branchMatch = event.branch === filters.department;
+                         if (!deptMatch && !branchMatch) return false;
+                    }
+                    
+                    // Filtro de Tipo de Evento (Pelo Nome ou Tipo)
+                    if (filters.eventType !== 'Todos') {
+                        // Compara com o nome do evento OU com o tipo salvo
+                        const nameMatch = event.name === filters.eventType;
+                        const typeMatch = event.eventType === filters.eventType;
+                        if (!nameMatch && !typeMatch) return false;
+                    }
+                        
                     return true;
                 });
             }, [filters, mockEvents]);
@@ -2279,8 +2208,17 @@ const LoginPage = ({ onLogin, initialDepartments = [] }) => {
                         if ((i === 0 && j < firstDayOfMonth) || dayCounter > daysInMonth) {
                             week.push({ day: null, dayOfWeek: j });
                         } else {
-                            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(dayCounter).padStart(2, '0')}`;
-                            const eventsOnDay = filteredEvents.filter(e => e.date === dateStr);
+                            // Formata YYYY-MM-DD local para comparação
+                            // Nota: Ajuste o locale ou timezone se necessário para bater com o banco
+                            const dateStr = new Date(year, month, dayCounter).toLocaleDateString('en-CA'); // YYYY-MM-DD
+                            const eventsOnDay = filteredEvents.filter(e => {
+                                // Tenta comparar string direta ou converter data
+                                if (e.date === dateStr) return true;
+                                try {
+                                    const eDate = new Date(e.date).toISOString().split('T')[0];
+                                    return eDate === dateStr;
+                                } catch(err) { return false; }
+                            });
                             week.push({ day: dayCounter, events: eventsOnDay, dayOfWeek: j });
                             dayCounter++;
                         }
@@ -2295,7 +2233,7 @@ const LoginPage = ({ onLogin, initialDepartments = [] }) => {
             
             return (
                 <div>
-                    <Header title="Calendário" />
+                    <Header title="Calendário" onBack={() => setView('dashboard')} />
                     <main className="p-4 pb-20 max-w-4xl mx-auto">
                         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-4">
                             <div className="flex justify-between items-center mb-4">
@@ -2304,31 +2242,43 @@ const LoginPage = ({ onLogin, initialDepartments = [] }) => {
                                 <button onClick={() => changeMonth(1)} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300">&gt;</button>
                             </div>
 
+                            {/* FILTROS */}
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4 text-sm">
                                 <select name="department" value={filters.department} onChange={handleFilterChange} className="border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:border-violet-300 focus:ring focus:ring-violet-200 focus:ring-opacity-50 dark:bg-gray-700 dark:text-gray-300">
-                                    {filterOptions.departments.map(d => <option key={d} value={d}>{d === 'Todos' ? 'Departamento (Todos)' : d}</option>)}
+                                    <option value="Todos">Todos Departamentos</option>
+                                    {deptOptions.map(d => <option key={d} value={d}>{d}</option>)}
                                 </select>
                                 <select name="eventType" value={filters.eventType} onChange={handleFilterChange} className="border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:border-violet-300 focus:ring focus:ring-violet-200 focus:ring-opacity-50 dark:bg-gray-700 dark:text-gray-300">
-                                    {filterOptions.eventTypes.map(t => <option key={t} value={t}>{t === 'Todos' ? 'Tipo de Evento (Todos)' : t}</option>)}
+                                    <option value="Todos">Todos Eventos</option>
+                                    {/* Mapeia a lista typeOptions extraída acima */}
+                                    {typeOptions.map((t, i) => <option key={i} value={t}>{t}</option>)}
                                 </select>
                             </div>
 
                             <div className="mb-4">
-                                <button onClick={() => handleAction('Sincronizar com Google')} className="w-full bg-blue-500 text-white text-sm font-semibold py-2 px-3 rounded-lg hover:bg-blue-600 transition">
+                                <button onClick={() => alert('Funcionalidade de sincronização em breve.')} className="w-full bg-blue-500 text-white text-sm font-semibold py-2 px-3 rounded-lg hover:bg-blue-600 transition">
                                     Sincronizar com Google Calendar
                                 </button>
                             </div>
 
+                            {/* GRADE DO CALENDÁRIO */}
                             <div className="grid grid-cols-7 gap-1 text-center text-sm text-gray-500 dark:text-gray-400">
                                 {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(day => <div key={day} className="font-semibold">{day}</div>)}
                                 {calendarGrid.flat().map((cell, index) => (
-                                    <div key={index} className={`h-20 border border-transparent rounded-md p-1 transition-colors duration-200 ${cell.day ? 'hover:bg-gray-100 dark:hover:bg-gray-700' : 'bg-gray-50 dark:bg-gray-800/50'} ${[0, 3, 6].includes(cell.dayOfWeek) && cell.day ? 'bg-violet-50 dark:bg-violet-900/30' : ''}`}>
-                                        {cell.day && <span className="font-medium text-gray-700 dark:text-gray-300">{cell.day}</span>}
-                                        {cell.events && cell.events.map(event => (
-                                            <div key={event.id} onClick={() => { setEventId(event.id); setView('eventDetail'); }} className="bg-violet-200 text-violet-900 dark:bg-violet-800 dark:text-violet-200 text-xs rounded p-1 mt-1 truncate cursor-pointer hover:bg-violet-300 dark:hover:bg-violet-700">
-                                                {event.name}
-                                            </div>
-                                        ))}
+                                    <div key={index} className={`h-24 border border-gray-100 dark:border-gray-700 rounded-md p-1 transition-colors duration-200 ${cell.day ? 'hover:bg-gray-50 dark:hover:bg-gray-700/50' : 'bg-gray-50 dark:bg-gray-800/50'} overflow-hidden`}>
+                                        {cell.day && <span className="font-bold text-gray-700 dark:text-gray-300 block mb-1">{cell.day}</span>}
+                                        <div className="overflow-y-auto max-h-16 space-y-1 custom-scrollbar">
+                                            {cell.events && cell.events.map(event => (
+                                                <div 
+                                                    key={event.id} 
+                                                    onClick={() => { setEventId(event.id); setView('eventDetail'); }} 
+                                                    className="bg-violet-100 text-violet-800 dark:bg-violet-900/50 dark:text-violet-200 text-[10px] rounded px-1 py-0.5 truncate cursor-pointer hover:bg-violet-200"
+                                                    title={event.name}
+                                                >
+                                                    {event.name}
+                                                </div>
+                                            ))}
+                                        </div>
                                     </div>
                                 ))}
                             </div>
@@ -3318,76 +3268,66 @@ const LoginPage = ({ onLogin, initialDepartments = [] }) => {
 // --- Componente Principal ---
         function App() {
             // --- ESTADOS DE USUÁRIO E NAVEGAÇÃO ---
-            const handleEditCalendarEvent = (event) => {
-    setEditingCalendarEvent(event);
-    setView('addCalendarEvent');
-};
-            const [mockBranches, setMockBranches] = useState([]);
+            const [mockEventTypes, setMockEventTypes] = useState([]);
             const [currentUser, setCurrentUser] = useState(null);
             const [view, setView] = useState('login'); 
             const [selectedEventId, setSelectedEventId] = useState(null);
             const [editingEventId, setEditingEventId] = useState(null);
             const [loading, setLoading] = useState(true);
             
+            // --- ESTADO DE EDIÇÃO DO CALENDÁRIO (CORRIGIDO) ---
+            const [editingCalendarEvent, setEditingCalendarEvent] = useState(null); 
+            
             // --- ESTADOS DE DADOS (BACKEND) ---
-            const [mockEvents, setMockEvents] = useState([]); // Eventos vindos da planilha
-            // Mantemos os estáticos como fallback ou inicialização se necessário, mas idealmente viriam do back
+            const [mockEvents, setMockEvents] = useState([]); 
             const [mockScales, setMockScales] = useState(MOCK_SCALES_DATA); 
             const [assignments, setAssignments] = useState(MOCK_ASSIGNMENTS);
             const [mockDepartments, setMockDepartments] = useState({});
             const [mockAccess, setMockAccess] = useState({});
-            
+            const [mockBranches, setMockBranches] = useState([]); // Estado para Filiais
+
             // --- ESTADOS DE INTERFACE ---
             const [managingTable, setManagingTable] = useState(null);
             const [theme, setTheme] = useState('light');
-            const [showNotifications, setShowNotifications] = useState(false); // <--- NOVO: Controle do Modal de Avisos
+            const [showNotifications, setShowNotifications] = useState(false); 
 
-            // --- EFEITOS (SIDE EFFECTS) ---
-
-            // 1. Gerenciamento de Tema (Dark Mode)
+            // --- EFEITOS ---
             useEffect(() => {
-                if (theme === 'dark') {
-                    document.documentElement.classList.add('dark');
-                } else {
-                    document.documentElement.classList.remove('dark');
-                }
+                if (theme === 'dark') document.documentElement.classList.add('dark');
+                else document.documentElement.classList.remove('dark');
             }, [theme]);
 
-            // 2. Carregamento Inicial de Dados (Ao abrir o App)
             useEffect(() => {
                 const loadData = async () => {
                     try {
                         const data = await api.getInitialData();
-                        
                         if (data) {
+                            if (data.tiposEventos) setMockEventTypes(data.tiposEventos);
                             if (data.eventos) setMockEvents(data.eventos);
-                            
-                            // --- ADICIONADO: Carrega as Escalas Reais ---
-                            if (data.escalas) setMockScales(data.escalas);
+                            // Carrega escalas reais se vierem do backend
+                            if (data.escalas && Array.isArray(data.escalas)) setMockScales(data.escalas);
                             
                             if (data.departamentos) {
-                                // Converte array de strings em objeto para fácil acesso
                                 const deptsObj = {};
                                 data.departamentos.forEach(d => deptsObj[d] = { DE_NOME_DEPARTAMENTO: d });
                                 setMockDepartments(deptsObj);
                             }
                             if (data.filiais) setMockBranches(data.filiais);
-                            // Se o backend devolver sessão ativa (opcional futuro), restaura login
                             if (data.currentUser && data.currentUser.id !== 'guest') {
                                 setCurrentUser(data.currentUser);
                                 setView('dashboard');
                             }
                         }
                     } catch (error) {
-                        console.error("Erro ao carregar dados iniciais:", error);
+                        console.error("Erro ao carregar dados:", error);
                     } finally {
-                        setLoading(false); // Libera a tela de loading
+                        setLoading(false);
                     }
                 };
                 loadData();
             }, []);
             
-            // 3. Configuração do Manifesto PWA (Ícone na home do celular)
+            // Configura Manifesto PWA
             useEffect(() => {
                 const manifest = {
                     "name": "Agendei7", "short_name": "Agendei7", "start_url": ".", "display": "standalone",
@@ -3398,56 +3338,39 @@ const LoginPage = ({ onLogin, initialDepartments = [] }) => {
                 document.querySelector('#manifest').setAttribute('href', manifestUrl);
             }, []);
 
-            // --- HANDLERS (FUNÇÕES DE AÇÃO) ---
-
+            // --- HANDLERS ---
             const refreshData = async () => {
-                    setLoading(true);
-                    try {
-                        const data = await api.getInitialData();
-                        if (data && data.eventos) setMockEvents(data.eventos);
-                        setView('dashboard');
-                    } catch (e) {
-                        console.error(e);
-                    } finally {
-                        setLoading(false);
-                    }
-                };
-
-            const handleLogin = (userData) => {
-                setCurrentUser(userData);
-                setView('dashboard');
+                setLoading(true);
+                try {
+                    const data = await api.getInitialData();
+                    if (data && data.eventos) setMockEvents(data.eventos);
+                    if (data && data.escalas) setMockScales(data.escalas); // Atualiza escalas também
+                    setView('dashboard');
+                } catch (e) { console.error(e); } finally { setLoading(false); }
             };
 
+            // Função para abrir edição ou criação de evento de calendário
+            const handleEditCalendarEvent = (event) => {
+                setEditingCalendarEvent(event); 
+                setView('addCalendarEvent');
+            };
+
+            const handleLogin = (userData) => { setCurrentUser(userData); setView('dashboard'); };
+            
             const handleLogout = () => {
                 setLoading(true);
-                setTimeout(() => {
-                    setCurrentUser(null); 
-                    setView('login'); 
-                    setLoading(false);
-                }, 500);
+                setTimeout(() => { setCurrentUser(null); setView('login'); setLoading(false); }, 500);
             };
 
-            const handleUpdateUser = (updatedUser) => {
-                 setCurrentUser(updatedUser);
-            };
-
-            const handleUpdatePassword = (newPassword) => {
-                alert("A alteração de senha deve ser solicitada ao administrador.");
-            }
+            const handleUpdateUser = (u) => setCurrentUser(u);
+            const handleUpdatePassword = () => alert("Solicite ao administrador.");
 
             // --- RENDERIZAÇÃO ---
-
-            if (loading) {
-                return ( <div className="min-h-screen flex justify-center items-center"> <div className="loader"></div> </div> );
-            }
+            if (loading) return <div className="min-h-screen flex justify-center items-center"><div className="loader"></div></div>;
 
             const renderView = () => {
-                // Se não estiver logado, mostra Login (passando deptos para não travar)
-                if (!currentUser) {
-                    return <LoginPage onLogin={handleLogin} initialDepartments={Object.keys(mockDepartments)} />;
-                }
+                if (!currentUser) return <LoginPage onLogin={handleLogin} initialDepartments={Object.keys(mockDepartments)} />;
                 
-                // Roteador de Telas
                 switch (view) {
                     case 'dashboard': 
                         return <DashboardPage 
@@ -3455,37 +3378,28 @@ const LoginPage = ({ onLogin, initialDepartments = [] }) => {
                             setView={setView} 
                             setEventId={setSelectedEventId} 
                             mockEvents={mockEvents} 
-                            // Passa a função que abre o modal ao clicar no sino
                             onOpenNotifications={() => setShowNotifications(true)} 
-                            onEditEvent={handleEditCalendarEvent}
+                            onEditEvent={handleEditCalendarEvent} 
                         />;
-                        case 'addCalendarEvent':
-                          return <AddCalendarEventPage 
-                            setView={setView} onSaveSuccess={refreshData}
-                            branches={mockBranches || []}
-                            editingEvent={editingCalendarEvent}
-                        />;
-                    case 'addEvent': 
-                        return <AddEventPage 
+                    case 'addCalendarEvent':
+                        return <AddCalendarEventPage 
                             setView={setView} 
-                            setMockEvents={setMockEvents} 
-                            mockEvents={mockEvents} 
-                            editingEventId={editingEventId} 
-                            setEditingEventId={setEditingEventId} 
+                            onSaveSuccess={refreshData} 
+                            branches={mockBranches}
+                            eventTypes={mockEventTypes}
+                            departments={Object.keys(mockDepartments)} 
+                            editingEvent={editingCalendarEvent} 
                         />;
-                    case 'editScales': 
+                    case 'addEvent': return <AddEventPage setView={setView} setMockEvents={setMockEvents} mockEvents={mockEvents} editingEventId={editingEventId} setEditingEventId={setEditingEventId} />;
+                                        case 'editScales': 
                         return <EditScalesPage 
                             setView={setView} 
-                            mockEvents={mockEvents} 
-                            setMockEvents={setMockEvents} 
+                            mockScales={mockScales}
+                            setMockScales={setMockScales} 
                             setEditingEventId={setEditingEventId} 
                         />;
-                    case 'generateRoteiro': 
-                        return <GenerateRoteiroPage 
-                            setView={setView} 
-                            mockEvents={mockEvents} 
-                            mockDepartments={mockDepartments} 
-                        />;
+                    case 'generateRoteiro': return <GenerateRoteiroPage setView={setView} mockEvents={mockEvents} mockDepartments={mockDepartments} />;
+                    
                     case 'eventDetail': 
                         return <EventDetailPage 
                             currentUser={currentUser} 
@@ -3496,80 +3410,25 @@ const LoginPage = ({ onLogin, initialDepartments = [] }) => {
                             mockEvents={mockEvents} 
                             mockScales={mockScales} 
                         />;
-                    case 'calendar': 
-                        return <CalendarPage 
-                            currentUser={currentUser} 
-                            setView={setView} 
-                            setEventId={setSelectedEventId} 
-                            mockEvents={mockEvents} 
-                        />;
-                    case 'profile': 
-                        return <ProfilePage 
-                            currentUser={currentUser} 
-                            onLogout={handleLogout} 
-                            onUpdateUser={handleUpdateUser} 
-                            setView={setView} 
-                        />;
-                    case 'myScales': 
-                        return <MyScalesPage 
-                            currentUser={currentUser} 
-                            mockEvents={mockEvents} 
-                            setView={setView} 
-                        />;
-                    case 'departmentData': 
-                        return <DepartmentDataPage setView={setView} />;
-                    case 'settings': 
-                        return <SettingsPage 
-                            currentUser={currentUser} 
-                            setView={setView} 
-                            setManagingTable={setManagingTable} 
-                            theme={theme} 
-                            setTheme={setTheme} 
-                            onUpdatePassword={handleUpdatePassword} 
-                        />;
-                    case 'manageTable': 
-                        return <ManageTablePage 
-                            tableName={managingTable} 
-                            setView={setView} 
-                            mockEvents={mockEvents} 
-                            currentUser={currentUser} 
-                            setMockEvents={setMockEvents} 
-                            mockDepartments={mockDepartments} 
-                            setMockDepartments={setMockDepartments} 
-                            mockAccess={mockAccess} 
-                            setMockAccess={setMockAccess} 
-                        />;
-                    default: 
-                        return <DashboardPage 
-                            currentUser={currentUser} 
-                            setView={setView} 
-                            setEventId={setSelectedEventId} 
-                            mockEvents={mockEvents} 
-                            onOpenNotifications={() => setShowNotifications(true)}
-                        />;
+                        
+                    case 'calendar': return <CalendarPage currentUser={currentUser} setView={setView} setEventId={setSelectedEventId} mockEvents={mockEvents} mockDepartments={mockDepartments} eventTypes={mockEventTypes}/>;
+                    case 'profile': return <ProfilePage currentUser={currentUser} onLogout={handleLogout} onUpdateUser={handleUpdateUser} setView={setView} />;
+                    case 'myScales': return <MyScalesPage currentUser={currentUser} mockEvents={mockEvents} setView={setView} />;
+                    case 'departmentData': return <DepartmentDataPage setView={setView} />;
+                    case 'settings': return <SettingsPage currentUser={currentUser} setView={setView} setManagingTable={setManagingTable} theme={theme} setTheme={setTheme} onUpdatePassword={handleUpdatePassword} />;
+                    case 'manageTable': return <ManageTablePage tableName={managingTable} setView={setView} mockEvents={mockEvents} currentUser={currentUser} setMockEvents={setMockEvents} mockDepartments={mockDepartments} setMockDepartments={setMockDepartments} mockAccess={mockAccess} setMockAccess={setMockAccess} />;
+                    default: return <DashboardPage currentUser={currentUser} setView={setView} setEventId={setSelectedEventId} mockEvents={mockEvents} onOpenNotifications={() => setShowNotifications(true)} onEditEvent={handleEditCalendarEvent} />;
                 }
             };
             
-            const showNav = currentUser && view !== 'login';
-
             return (
                 <div className="bg-gray-100 dark:bg-gray-900 min-h-screen relative">
-                    {/* 1. Renderiza a tela atual */}
                     {renderView()}
-                    
-                    {/* 2. Renderiza o Modal de Notificações (Fica "por cima" de tudo) */}
-                    <NotificationCenterModal 
-                        isOpen={showNotifications} 
-                        onClose={() => setShowNotifications(false)} 
-                        mockDepartments={mockDepartments}
-                    />
-
-                    {/* 3. Renderiza o Menu Inferior */}
-                    {showNav && <BottomNav activeView={view} setView={setView} />}
+                    <NotificationCenterModal isOpen={showNotifications} onClose={() => setShowNotifications(false)} mockDepartments={mockDepartments} />
+                    {currentUser && view !== 'login' && <BottomNav activeView={view} setView={setView} />}
                 </div>
             );
         }
-
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
