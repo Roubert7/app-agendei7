@@ -1201,9 +1201,11 @@ const LoginPage = ({ onLogin, initialDepartments = [] }) => {
         };
 
         // --- Componente DashboardPage Completo ---
-// --- 1. DASHBOARD (Com botão do sino e botão de adicionar evento) ---
-        const DashboardPage = ({ currentUser, setView, setEventId, mockEvents, onOpenNotifications }) => {
-            // Garante que mockEvents seja sempre um array
+// --- DASHBOARD (CORRIGIDO: Adicionado onEditEvent nos parâmetros) ---
+        const DashboardPage = ({ currentUser, setView, setEventId, mockEvents, onOpenNotifications, onEditEvent }) => {
+            //                                                                                       ^^^^^^^^^^^
+            //                                                                               FALTAVA ISSO AQUI EM CIMA
+            
             const eventosParaExibir = Array.isArray(mockEvents) ? mockEvents : [];
 
             return (
@@ -1214,7 +1216,6 @@ const LoginPage = ({ onLogin, initialDepartments = [] }) => {
                                 <div className="w-6"></div> 
                                 <h1 className="text-xl font-bold text-gray-800 dark:text-gray-200">Início</h1>
                                 
-                                {/* BOTÃO DO SINO (NOTIFICAÇÕES) */}
                                 <button 
                                     onClick={onOpenNotifications} 
                                     className="p-2 rounded-full text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700 transition relative"
@@ -1222,7 +1223,6 @@ const LoginPage = ({ onLogin, initialDepartments = [] }) => {
                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                                     </svg>
-                                    {/* Bolinha vermelha */}
                                     <span className="absolute top-2 right-2 block h-2 w-2 rounded-full bg-red-500 ring-2 ring-white dark:ring-gray-800"></span>
                                 </button>
                             </div>
@@ -1235,7 +1235,6 @@ const LoginPage = ({ onLogin, initialDepartments = [] }) => {
                             <p className="text-gray-600 dark:text-gray-400">O que você gostaria de fazer hoje?</p>
                         </div>
 
-                        {/* MENU DE GERENCIAMENTO (Apenas Admin/Master) */}
                         {(currentUser.id === 'admin' || currentUser.id === 'admin_master') && (
                             <div className="mb-6">
                                 <h3 className="text-lg font-bold text-gray-800 dark:text-gray-200 mb-3">Gerenciamento</h3>
@@ -1256,14 +1255,14 @@ const LoginPage = ({ onLogin, initialDepartments = [] }) => {
                             </div>
                         )}
 
-                        {/* LISTA DE PRÓXIMOS EVENTOS (CALENDÁRIO) */}
                         <div className="space-y-4">
                             <div className="flex items-center justify-between mb-3">
                                 <h3 className="text-lg font-bold text-gray-800 dark:text-gray-200">Próximos Eventos (Calendário)</h3>
-                                
-                                {/* BOTÃO ADICIONAR EVENTO (Roxo e Pequeno) */}
                                 <button 
-                                    onClick={() => setView('addCalendarEvent')}
+                                    onClick={() => {
+                                        if(onEditEvent) onEditEvent(null); // Limpa edição ao criar novo
+                                        else setView('addCalendarEvent'); 
+                                    }}
                                     className="bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold py-1.5 px-3 rounded-lg transition flex items-center gap-1 shadow-sm"
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
@@ -1275,20 +1274,20 @@ const LoginPage = ({ onLogin, initialDepartments = [] }) => {
                                 <p className="text-gray-500 text-sm text-center py-4">Nenhum evento próximo.</p>
                             ) : (
                                 eventosParaExibir.map(event => (
-                              <EventCard 
-                                  key={event.id} 
-                                  event={event} 
-                                  onClick={() => { setEventId(event.id); setView('eventDetail'); }} 
-                                  onEdit={(evt) => onEditEvent(evt)}
-                              />
-                          ))
+                                    <EventCard 
+                                        key={event.id} 
+                                        event={event} 
+                                        onClick={() => { setEventId(event.id); setView('eventDetail'); }} 
+                                        onEdit={onEditEvent} // Agora a variável existe e será passada corretamente
+                                    />
+                                ))
                             )}
                         </div>
                     </main>
                 </div>
             );
         };
-
+        
         // --- 2. NOVO COMPONENTE: ADICIONAR EVENTO AO CALENDÁRIO ---
 // --- COMPONENTE ATUALIZADO: ADICIONAR EVENTO AO CALENDÁRIO ---
         const AddCalendarEventPage = ({ setView, onSaveSuccess, branches = [], editingEvent = null }) => {
