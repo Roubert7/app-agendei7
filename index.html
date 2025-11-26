@@ -540,6 +540,9 @@ const NotificationCenterModal = ({ isOpen, onClose, mockDepartments = {} }) => {
 
 // --- CONEXÃO COM O BACKEND (GOOGLE APPS SCRIPT) ---
 const api = {
+    /**
+     * Função genérica e interna para fazer uma chamada ao Google Apps Script.
+     */
     _callApi: function(action, payload = {}) {
         return new Promise((resolve, reject) => {
             if (!window.google || !window.google.script) {
@@ -547,13 +550,6 @@ const api = {
                 reject(new Error("Ambiente inválido."));
                 return;
             }
-                  updateCalendarEvent: function(eventData) {
-              return this._callApi('updateCalendarEvent', eventData);
-          },
-
-          deleteCalendarEvent: function(id) {
-              return this._callApi('deleteCalendarEvent', { id });
-          },
             google.script.run
                 .withSuccessHandler((response) => {
                     if (response && response.status === 'error') {
@@ -585,15 +581,10 @@ const api = {
     },
 
     // --- MÉTODOS DE DADOS GERAIS ---
-    addCalendarEvent: function(eventData) {
-        return this._callApi('addCalendarEvent', eventData);
-    },
-
     getInitialData: function() {
         return this._callApi('getInitialData');
     },
 
-    // AQUI ESTAVA FALTANDO:
     getDepartamentos: function() {
         return this._callApi('getDepartamentos');
     },
@@ -602,9 +593,9 @@ const api = {
         return this._callApi('getEventos');
     },
 
-    // --- MÉTODOS DE ESCALAS & EVENTOS ---
-    addEvent: function(eventData, currentUser) {
-        return this._callApi('addEvent', eventData); // Backend ajustado para receber payload direto
+    // --- MÉTODOS DE ESCALAS ---
+    addEvent: function(eventData) {
+        return this._callApi('addEvent', eventData);
     },
     
     getTodasAsEscalas: function() {
@@ -618,6 +609,19 @@ const api = {
 
     publishMuralPost: function(postData) {
         return this._callApi('publishMuralPost', postData);
+    },
+
+    // --- MÉTODOS DO CALENDÁRIO (NOVOS) ---
+    addCalendarEvent: function(eventData) {
+        return this._callApi('addCalendarEvent', eventData);
+    },
+
+    updateCalendarEvent: function(eventData) {
+        return this._callApi('updateCalendarEvent', eventData);
+    },
+
+    deleteCalendarEvent: function(id) {
+        return this._callApi('deleteCalendarEvent', { id: id });
     }
 };
 
@@ -928,9 +932,10 @@ const Header = ({ title, onBack, rightAction }) => (
             return (
                 <div onClick={onClick} className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 flex flex-col gap-3 cursor-pointer hover:shadow-lg transition border-l-4 border-violet-500 relative group">
                     
-                    {/* BOTÃO DE EDIÇÃO (Lápis) - Aparece no topo direito */}
+                    {/* BOTÃO DE EDIÇÃO (CORRIGIDO) */}
                     {onEdit && (
                         <button 
+                            // AQUI ESTAVA O ERRO: Deve chamar 'onEdit', não 'onEditEvent'
                             onClick={(e) => { e.stopPropagation(); onEdit(event); }}
                             className="absolute top-2 right-2 p-2 bg-gray-100 hover:bg-violet-100 text-gray-500 hover:text-violet-600 rounded-full transition z-10"
                             title="Editar Evento"
@@ -939,7 +944,7 @@ const Header = ({ title, onBack, rightAction }) => (
                         </button>
                     )}
 
-                    <div className="flex items-start justify-between pr-8"> {/* pr-8 para não bater no lápis */}
+                    <div className="flex items-start justify-between pr-8">
                         <div className="flex items-center gap-4">
                             <div className="flex flex-col items-center justify-center bg-gray-100 dark:bg-gray-700 rounded-lg w-14 h-14 text-gray-600 dark:text-gray-300 shrink-0 font-bold border">
                                 <span className="text-[10px] uppercase">{month}</span>
