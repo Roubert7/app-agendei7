@@ -1137,11 +1137,8 @@ const LoginPage = ({ onLogin, initialDepartments = [] }) => {
             );
         };
 
-        // --- Componente DashboardPage Completo ---
-// --- DASHBOARD (CORRIGIDO: Adicionado onEditEvent nos parâmetros) ---
+    // --- Componente DashboardPage Completo ---
         const DashboardPage = ({ currentUser, setView, setEventId, mockEvents, onOpenNotifications, onEditEvent }) => {
-            //                                                                                       ^^^^^^^^^^^
-            //                                                                               FALTAVA ISSO AQUI EM CIMA
             
             const eventosParaExibir = Array.isArray(mockEvents) ? mockEvents : [];
 
@@ -1455,17 +1452,11 @@ const LoginPage = ({ onLogin, initialDepartments = [] }) => {
             const [musica3, setMusica3] = useState('');
             const [musica4, setMusica4] = useState('');
 
-            // --- LISTAS DINÂMICAS (SEM HARDCODE) ---
-            const departmentOptions = Object.keys(departments); 
-            
-            // Normaliza tipos de eventos (se vier objeto ou string)
-            const eventTypeOptions = eventTypes.map(t => (typeof t === 'object' ? t.nome : t)).filter(Boolean);
-
-            // Normaliza funções (roles) vindas do banco
-            // AQUI ESTA A CORREÇÃO: Usamos apenas o que vem do banco. Se vier vazio, mostra vazio.
-            const roleOptions = Array.isArray(roles) ? roles : []; 
-
-            const statusOptions = ['Aberta', 'Fechada', 'Em Andamento', 'Planejada']; // Status do sistema pode ser fixo ou vir do banco se preferir
+            // LISTAS PARA DROPDOWNS
+            const departmentOptions = Object.keys(departments);
+            const eventTypeOptions = eventTypes; // Agora vem a lista fixa
+            const roleOptions = roles;           // Agora vem a lista fixa
+            const statusOptions = ['Aberta', 'Fechada', 'Em Andamento', 'Planejada'];
 
             const isEditing = !!editingEventId;
 
@@ -1474,7 +1465,6 @@ const LoginPage = ({ onLogin, initialDepartments = [] }) => {
                     resetForm();
                     return;
                 }
-                // Lógica de preencher dados na edição (Mantida igual)
                 const eventToEdit = mockEvents.find(e => e.id === editingEventId);
                 if (eventToEdit) {
                     setDate(eventToEdit.date || '');
@@ -1482,7 +1472,7 @@ const LoginPage = ({ onLogin, initialDepartments = [] }) => {
                     setDepartment(eventToEdit.department || '');
                     setEventType(eventToEdit.eventType || '');
                     setResponsible(eventToEdit.responsible || '');
-                    setMainRole(eventToEdit.mainRole || ''); // Deve bater com um item da lista roles
+                    setMainRole(eventToEdit.mainRole || '');
                     setObservations(eventToEdit.description || '');
                     setAttachment(null);
                     setExistingAttachmentName(eventToEdit.attachmentName || '');
@@ -1507,7 +1497,6 @@ const LoginPage = ({ onLogin, initialDepartments = [] }) => {
                 setNomeCantor(''); setIntegrante1(''); setIntegrante2(''); setIntegrante3(''); setIntegrante4(''); setMusica1(''); setMusica2(''); setMusica3(''); setMusica4('');
             };
 
-            // Função auxiliar base64
             const fileToBase64 = (file) => new Promise((resolve, reject) => {
                 const reader = new FileReader();
                 reader.readAsDataURL(file);
@@ -1541,7 +1530,6 @@ const LoginPage = ({ onLogin, initialDepartments = [] }) => {
                 }
 
                 if (isEditing) {
-                    // Implementar api.updateEvent se necessário
                     alert('Edição enviada (simulação)!'); 
                     setEditingEventId(null);
                     setView('editScales');
@@ -1553,7 +1541,7 @@ const LoginPage = ({ onLogin, initialDepartments = [] }) => {
             };
 
             const isMusica = department === 'MINISTERIO DA MUSICA';
-            const isCultoSábado = eventType === 'CULTO DE SÁBADO' || eventType === 'Culto Divino';
+            const isCultoSábado = eventType === 'CULTO DE SÁBADO';
             const optionalFieldsRequired = isMusica && isCultoSábado;
             
             const handleBack = () => {
@@ -1605,39 +1593,28 @@ const LoginPage = ({ onLogin, initialDepartments = [] }) => {
                                     <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Nome do Responsável *</label>
                                     <input type="text" value={responsible} onChange={e => setResponsible(e.target.value)} className="shadow border rounded-md w-full py-2 px-3 dark:bg-gray-700 dark:text-white" required />
                                 </div>
-                                
-                                {/* CAMPO FUNÇÃO PRINCIPAL DINÂMICO */}
-                                <div>
+                                 <div>
                                     <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Função Principal</label>
                                     <select value={mainRole} onChange={e => setMainRole(e.target.value)} className="border rounded-md shadow w-full dark:bg-gray-700 dark:text-white">
                                         <option value="">Nenhuma</option>
                                         {roleOptions.map((opt, i) => <option key={i} value={opt}>{opt}</option>)}
                                     </select>
-                                    {roleOptions.length === 0 && <p className="text-xs text-red-500 mt-1">Nenhuma função cadastrada na tabela EVENTOS.</p>}
                                 </div>
 
                                 {isMusica && (
                                     <div className="p-4 bg-gray-50 dark:bg-gray-700/30 rounded border">
                                         <h3 className="font-bold mb-2 dark:text-gray-200">Música</h3>
                                         <input type="text" placeholder="Cantor" value={nomeCantor} onChange={e => setNomeCantor(e.target.value)} className="w-full mb-2 p-2 border rounded dark:bg-gray-700 dark:text-white" />
-                                        {/* (Outros campos de música omitidos para brevidade, mantenha se necessário) */}
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <input type="text" placeholder="Inte. 1" value={integrante1} onChange={e => setIntegrante1(e.target.value)} className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white" />
+                                            <input type="text" placeholder="Inte. 2" value={integrante2} onChange={e => setIntegrante2(e.target.value)} className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white" />
+                                        </div>
                                     </div>
                                 )}
 
                                 <div>
                                     <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Observações</label>
                                     <textarea value={observations} onChange={e => setObservations(e.target.value)} rows="3" className="shadow border rounded-md w-full py-2 px-3 dark:bg-gray-700 dark:text-white"></textarea>
-                                </div>
-                                
-                                <div>
-                                    <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Anexo</label>
-                                    <div className="flex items-center gap-2">
-                                        <label className="cursor-pointer bg-gray-100 px-4 py-2 rounded border text-sm font-semibold hover:bg-gray-200 transition">
-                                            Escolher Arquivo
-                                            <input type="file" id="attachment_scale" className="hidden" onChange={e => setAttachment(e.target.files[0])} />
-                                        </label>
-                                        <span className="text-xs text-gray-500">{attachment ? attachment.name : 'Nenhum'}</span>
-                                    </div>
                                 </div>
 
                                 <div className="pt-4">
@@ -1652,7 +1629,7 @@ const LoginPage = ({ onLogin, initialDepartments = [] }) => {
             );
         };
         
-
+// --- (7) TELA EDITAR ESCALAS --- //
         const EditScalesPage = ({ setView, mockScales, setMockScales, setEditingEventId, departmentsList = [], eventTypesList = [], statusList = [] }) => {
             const [filters, setFilters] = useState({ date: '', status: 'Todos', eventType: 'Todos', department: 'Todos' });
             const escalasData = Array.isArray(mockScales) ? mockScales : [];
@@ -3308,6 +3285,7 @@ const LoginPage = ({ onLogin, initialDepartments = [] }) => {
 
 // (20) --- Componente Principal ---
         function App() {
+            // --- ESTADOS DE USUÁRIO E NAVEGAÇÃO ---
             const [currentUser, setCurrentUser] = useState(null);
             const [view, setView] = useState('login'); 
             const [selectedEventId, setSelectedEventId] = useState(null);
@@ -3315,16 +3293,19 @@ const LoginPage = ({ onLogin, initialDepartments = [] }) => {
             const [editingCalendarEvent, setEditingCalendarEvent] = useState(null);
             const [loading, setLoading] = useState(true);
             
-            // --- DADOS REAIS ---
-            const [mockEvents, setMockEvents] = useState([]); // CALENDÁRIO
-            const [mockScales, setMockScales] = useState([]); // ESCALAS
-            const [mockDepartments, setMockDepartments] = useState({}); // DEPARTAMENTOS
-            const [mockBranches, setMockBranches] = useState([]); // FILIAIS
-            const [mockEventTypes, setMockEventTypes] = useState([]); // TIPOS EVENTOS
-            const [mockRoles, setMockRoles] = useState([]); // FUNÇÕES
-            const [mockStatus, setMockStatus] = useState([]); // STATUS ESCALAS
-
+            // --- ESTADOS DE DADOS (NOMES CORRIGIDOS) ---
+            const [calendarioEvents, setCalendarioEvents] = useState([]); // Tabela CALENDÁRIO
+            const [escalasEvents, setEscalasEvents] = useState([]);       // Tabela ESCALAS
+            
+            const [departmentsList, setDepartmentsList] = useState([]); // Lista simples de nomes
+            const [branchesList, setBranchesList] = useState([]);       // Lista de Filiais
+            const [eventTypesList, setEventTypesList] = useState([]);   // Lista de Tipos
+            const [rolesList, setRolesList] = useState([]);             // Lista de Funções
+            const [statusList, setStatusList] = useState([]);           // Lista de Status
+            
+            // Outros
             const [assignments, setAssignments] = useState({});
+            const [managingTable, setManagingTable] = useState(null);
             const [theme, setTheme] = useState('light');
             const [showNotifications, setShowNotifications] = useState(false); 
 
@@ -3333,39 +3314,73 @@ const LoginPage = ({ onLogin, initialDepartments = [] }) => {
                 else document.documentElement.classList.remove('dark');
             }, [theme]);
 
-            // CARREGAMENTO INICIAL
+// --- CARREGAMENTO DE DADOS REAIS ---
             const loadData = async () => {
+                setLoading(true);
                 try {
                     const data = await api.getInitialData();
+                    console.log("DADOS RECEBIDOS DO BACKEND:", data); // Verifique no console!
+
                     if (data) {
-                        if (data.eventos) setMockEvents(data.eventos);
-                        if (data.escalas) setMockScales(data.escalas);
+                        // 1. CALENDÁRIO (Eventos)
+                        // O Backend manda como 'eventos' ou 'calendarioEvents' (depende da sua versão do codigo.gs)
+                        // Vamos garantir que pegue de qualquer um dos dois.
+                        const eventosReais = data.calendarioEvents || data.eventos || [];
+                        
+                        // ATENÇÃO: Se você estiver usando o estado 'mockEvents' para o calendário:
+                        setMockEvents(eventosReais); 
+                        
+                        // Se estiver usando 'dataStore.events' (versão nova que mandei):
+                        // setDataStore(prev => ({ ...prev, events: eventosReais }));
+
+
+                        // 2. ESCALAS
+                        const escalasReais = data.escalasEvents || data.escalas || [];
+                        setMockScales(escalasReais);
+
+
+                        // 3. DEPARTAMENTOS
+                        if (data.departamentos) {
+                            const deptsObj = {};
+                            // Se vier array de strings ["Musica", "Infantil"]
+                            if (Array.isArray(data.departamentos)) {
+                                data.departamentos.forEach(d => deptsObj[d] = { DE_NOME_DEPARTAMENTO: d });
+                            }
+                            setMockDepartments(deptsObj);
+                        }
+
+                        // 4. OUTROS DADOS
                         if (data.filiais) setMockBranches(data.filiais);
                         if (data.tiposEventos) setMockEventTypes(data.tiposEventos);
                         if (data.funcoes) setMockRoles(data.funcoes);
-                        if (data.statusEscalas) setMockStatus(data.statusEscalas);
+                        if (data.statusEscalas) setMockStatus(data.statusEscalas); // (corrigido nome estado)
                         
-                        if (data.departamentos) {
-                            const deptsObj = {};
-                            data.departamentos.forEach(d => deptsObj[d] = { DE_NOME_DEPARTAMENTO: d });
-                            setMockDepartments(deptsObj);
-                        }
-                        
+                        // LOGIN
                         if (data.currentUser && data.currentUser.id !== 'guest') {
                             setCurrentUser(data.currentUser);
                             setView('dashboard');
                         }
                     }
-                } catch (error) { console.error(error); } finally { setLoading(false); }
+                } catch (error) {
+                    console.error("Erro ao carregar dados:", error);
+                } finally {
+                    setLoading(false);
+                }
             };
 
             useEffect(() => { loadData(); }, []);
             
-            // ... (Manifesto PWA mantido) ...
+            // Configura Manifesto PWA...
+            useEffect(() => {
+                const manifest = { "name": "Agendei7", "short_name": "Agendei7", "start_url": ".", "display": "standalone", "background_color": "#f3f4f6", "theme_color": "#6d28d9", "description": "App", "icons": [] };
+                const blob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+                document.querySelector('#manifest').setAttribute('href', URL.createObjectURL(blob));
+            }, []);
 
+            // --- HANDLERS ---
             const refreshData = async () => {
-                setLoading(true);
-                await loadData(); // Reusa a função loadData para garantir tudo atualizado
+                await loadData(); 
+                setView('dashboard');
             };
 
             const handleEditCalendarEvent = (event) => {
@@ -3376,82 +3391,98 @@ const LoginPage = ({ onLogin, initialDepartments = [] }) => {
             const handleLogin = (userData) => { setCurrentUser(userData); setView('dashboard'); };
             const handleLogout = () => { setLoading(true); setTimeout(() => { setCurrentUser(null); setView('login'); setLoading(false); }, 500); };
             const handleUpdateUser = (u) => setCurrentUser(u);
+            const handleUpdatePassword = () => alert("Solicite ao administrador.");
 
+            // --- RENDERIZAÇÃO ---
             if (loading) return <div className="min-h-screen flex justify-center items-center"><div className="loader"></div></div>;
 
             const renderView = () => {
-                if (!currentUser) return <LoginPage onLogin={handleLogin} initialDepartments={Object.keys(mockDepartments)} />;
-                
-                // PREPARAÇÃO DE LISTAS PARA PASSAR AOS FILHOS
-                const deptList = Object.keys(mockDepartments);
+                // Transforma lista de strings em objeto para componentes antigos que esperam objeto
+                const deptsObject = departmentsList.reduce((acc, cur) => ({...acc, [cur]: {}}), {});
+
+                if (!currentUser) return <LoginPage onLogin={handleLogin} initialDepartments={departmentsList} />;
                 
                 switch (view) {
                     case 'dashboard': 
                         return <DashboardPage 
                             currentUser={currentUser} setView={setView} setEventId={setSelectedEventId} 
-                            mockEvents={mockEvents} // Passa lista do CALENDÁRIO
+                            setEventId={setSelectedEventId}
+                            setView={setView}
+                            mockEvents={mockEvents}
                             onOpenNotifications={() => setShowNotifications(true)} 
                             onEditEvent={handleEditCalendarEvent} 
                         />;
-
+                    
                     case 'addCalendarEvent':
                         return <AddCalendarEventPage 
                             setView={setView} onSaveSuccess={refreshData} 
-                            branches={mockBranches} 
-                            eventTypes={mockEventTypes} 
-                            departments={deptList} 
+                            branches={branchesList} 
+                            eventTypes={eventTypesList} 
+                            departments={departmentsList} 
                             editingEvent={editingCalendarEvent} 
                         />;
-
+                    
                     case 'addEvent': 
                         return <AddEventPage 
                             setView={setView} 
-                            setMockEvents={setMockEvents} 
+                            setMockEvents={()=>{}} // Não usado mais diretamente
                             editingEventId={editingEventId} 
                             setEditingEventId={setEditingEventId}
-                            // --- PASSANDO DADOS REAIS ---
-                            departments={mockDepartments}
-                            eventTypes={mockEventTypes} 
-                            roles={mockRoles} // Passa funções reais
+                            departments={deptsObject} // Passa objeto
+                            eventTypes={eventTypesList} 
+                            roles={rolesList}
                         />;
 
                     case 'editScales': 
                         return <EditScalesPage 
                             setView={setView} 
-                            mockScales={mockScales} // Lista de Escalas
-                            setMockScales={setMockScales} 
+                            mockScales={escalasEvents} // <--- Passa a variável correta
+                            setMockScales={()=>{}} 
                             setEditingEventId={setEditingEventId}
-                            // --- PASSANDO DADOS PARA FILTROS ---
-                            departmentsList={deptList}
-                            eventTypesList={mockEventTypes}
-                            statusList={mockStatus}
+                            departmentsList={departmentsList} // Passa lista
+                            eventTypesList={eventTypesList}
+                            statusList={statusList}
                         />;
                     
+                    case 'generateRoteiro': return <GenerateRoteiroPage setView={setView} mockEvents={calendarioEvents} mockDepartments={deptsObject} />;
+                    
+                    case 'eventDetail': 
+                        return <EventDetailPage 
+                            currentUser={currentUser} eventId={selectedEventId} setView={setView} 
+                            assignments={assignments} setAssignments={setAssignments} 
+                            mockEvents={calendarioEvents} // <--- Passa a variável correta
+                            mockScales={escalasEvents}    // <--- Passa a variável correta
+                        />;
+                        
                     case 'calendar': 
                         return <CalendarPage 
                             currentUser={currentUser} setView={setView} setEventId={setSelectedEventId} 
-                            mockEvents={mockEvents} 
-                            mockDepartments={mockDepartments} 
-                            eventTypes={mockEventTypes} // Passa Tipos para filtro
+                            mockEvents={calendarioEvents} // <--- Passa a variável correta
+                            mockDepartments={deptsObject} 
+                            eventTypes={eventTypesList} 
                         />;
-
-                    // ... (Outros cases mantidos: generateRoteiro, eventDetail, profile, etc) ...
-                    case 'generateRoteiro': return <GenerateRoteiroPage setView={setView} mockEvents={mockEvents} mockDepartments={mockDepartments} />;
-                    case 'eventDetail': return <EventDetailPage currentUser={currentUser} eventId={selectedEventId} setView={setView} assignments={assignments} setAssignments={setAssignments} mockEvents={mockEvents} mockScales={mockScales} />;
+                        
                     case 'profile': return <ProfilePage currentUser={currentUser} onLogout={handleLogout} onUpdateUser={handleUpdateUser} setView={setView} />;
-                    case 'myScales': return <MyScalesPage currentUser={currentUser} mockEvents={mockScales} setView={setView} />; // Atenção: MyScales vê Escalas
-                    case 'departmentData': return <DepartmentDataPage setView={setView} />;
-                    case 'settings': return <SettingsPage currentUser={currentUser} setView={setView} setManagingTable={setManagingTable} theme={theme} setTheme={setTheme} onUpdatePassword={() => {}} />;
-                    case 'manageTable': return <ManageTablePage tableName={managingTable} setView={setView} mockEvents={mockEvents} currentUser={currentUser} setMockEvents={setMockEvents} mockDepartments={mockDepartments} setMockDepartments={setMockDepartments} mockAccess={mockAccess} setMockAccess={setMockAccess} />;
                     
-                    default: return <DashboardPage currentUser={currentUser} setView={setView} setEventId={setSelectedEventId} mockEvents={mockEvents} onOpenNotifications={() => setShowNotifications(true)} onEditEvent={handleEditCalendarEvent} />;
+                    case 'myScales': 
+                        return <MyScalesPage 
+                            currentUser={currentUser} 
+                            mockEvents={escalasEvents} // <--- Passa Escalas aqui
+                            setView={setView} 
+                        />;
+                        
+                    case 'departmentData': return <DepartmentDataPage setView={setView} />;
+                    case 'settings': return <SettingsPage currentUser={currentUser} setView={setView} setManagingTable={setManagingTable} theme={theme} setTheme={setTheme} onUpdatePassword={handleUpdatePassword} />;
+                    case 'manageTable': return <ManageTablePage tableName={managingTable} setView={setView} mockEvents={calendarioEvents} currentUser={currentUser} setMockEvents={()=>{}} mockDepartments={deptsObject} setMockDepartments={()=>{}} mockAccess={mockAccess} setMockAccess={setMockAccess} />;
+                    
+                    default: return <DashboardPage currentUser={currentUser} setView={setView} setEventId={setSelectedEventId} mockEvents={calendarioEvents} onOpenNotifications={() => setShowNotifications(true)} onEditEvent={handleEditCalendarEvent} />;
                 }
             };
             
             return (
                 <div className="bg-white dark:bg-gray-900 min-h-screen relative text-gray-900 dark:text-gray-100">
                     {renderView()}
-                    <NotificationCenterModal isOpen={showNotifications} onClose={() => setShowNotifications(false)} mockDepartments={mockDepartments} />
+                    <NotificationCenterModal isOpen={showNotifications} onClose={() => setShowNotifications(false)} mockDepartments={departmentsList.reduce((acc, cur) => ({...acc, [cur]: {}}), {})} />
                     {currentUser && view !== 'login' && <BottomNav activeView={view} setView={setView} />}
                 </div>
             );
